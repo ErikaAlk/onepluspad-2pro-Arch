@@ -76,6 +76,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True, help='New output directory')
     parser.add_argument('--kernel-out', type=Path, default=DEFAULT_OUT)
+    parser.add_argument('--kernel-source', type=Path, default=KERNEL_GIT)
     parser.add_argument('--initramfs', type=Path,
                         default=WS / 'out/initramfs-dev/initramfs-ncm.cpio.gz')
     parser.add_argument('--dtb', type=Path)
@@ -147,9 +148,9 @@ def main():
     except LayoutError as error:
         parser.error(f'{dtb}: {error}')
 
-    head = subprocess.run(['git', '-C', str(KERNEL_GIT), 'rev-parse', 'HEAD'],
+    head = subprocess.run(['git', '-C', str(args.kernel_source), 'rev-parse', 'HEAD'],
                           capture_output=True, check=True, text=True).stdout.strip()
-    dirty = subprocess.run(['git', '-C', str(KERNEL_GIT), 'status', '--porcelain'],
+    dirty = subprocess.run(['git', '-C', str(args.kernel_source), 'status', '--porcelain'],
                            capture_output=True, check=True, text=True).stdout.strip()
     if dirty:
         parser.error(f'Kernel tree is dirty; commit first so the candidate identifies real code:\n{dirty}')
@@ -181,8 +182,10 @@ def main():
                 'cmdline': cmdline, 'inputs_sha256': hashes,
                 'abl_sink_layout': layout,
                 'boot_sha256': sha(boot), 'boot_size': boot.stat().st_size,
-                'scope': 'fastboot boot only (header v2, ABL delivers kernel/ramdisk/dtb); '
-                         'RAM userspace with NCM/HTTP evidence, telnet end, watchdog self-recovery.'}
+                'profile': args.profile,
+                'scope': ('持久根系统启动候选，使用已有Linux根分区。'
+                          if args.profile == 'persistent' else
+                          '内存启动候选，使用所选内存根系统与会话策略。')}
     if rootfs:
         manifest['ram_rootfs'] = rootfs
     if debug_package:
