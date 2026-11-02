@@ -1,0 +1,17 @@
+[Unit]
+Description=保护套闭合时屏蔽触控输入
+After=systemd-udevd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/erhai-cover
+ExecStopPost=/usr/bin/erhai-cover --release
+NoNewPrivileges=yes
+ProtectHome=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_UNIX
+DevicePolicy=closed
+DeviceAllow=char-input r
+
+[Install]
+WantedBy=multi-user.target
