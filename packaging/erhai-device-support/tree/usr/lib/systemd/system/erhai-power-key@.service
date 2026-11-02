@@ -13,6 +13,8 @@ StartLimitBurst=3
 
 [Service]
 Type=simple
+RuntimeDirectory=erhai-power-key
+RuntimeDirectoryPreserve=yes
 ExecStart=/usr/sbin/erhai-power-key /dev/input/%I
 Restart=on-failure
 RestartSec=1
