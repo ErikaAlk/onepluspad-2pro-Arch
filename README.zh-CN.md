@@ -1,7 +1,11 @@
-# Ubuntu for OnePlus Pad 2 Pro
+# Arch for OnePlus Pad 2 Pro
 
-在一加平板 2 Pro 上运行 Ubuntu Desktop 26.04，采用 GNOME 桌面与基于上游 Linux
-的设备适配内核。[English](README.md)
+在一加平板 2 Pro 上运行 Arch Linux ARM、GNOME Wayland 与 Waydroid。
+定制源码、固定版本、构建和验证入口见 [Arch 说明](docs/ARCH.zh-CN.md) 与 [`arch/`](arch/)。Android 双系统和用户数据必须保留。
+
+## 上游 Ubuntu 参考内容
+
+以下内容保留上游 Ubuntu 发行版的使用说明与验证范围。Arch 的构建入口和本机验证结果以 [Arch 说明](docs/ARCH.zh-CN.md) 为准。
 
 官方发布只在本仓库 [Releases](https://github.com/yzddmr6/onepluspad-2pro-mainline/releases)，免费提供。
 

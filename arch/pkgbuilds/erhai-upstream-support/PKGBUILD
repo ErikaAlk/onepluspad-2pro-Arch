@@ -1,0 +1,56 @@
+pkgname=erhai-upstream-support
+pkgver=0.6.0
+pkgrel=1
+pkgdesc='一加平板 2 Pro 电源键与合盖休眠、相机调校、SoCCP 固件与联网校时'
+arch=(any)
+url=https://github.com/yzddmr6/onepluspad-2pro-mainline
+license=(GPL-2.0-only)
+depends=(python chrony systemd mkinitcpio networkmanager)
+backup=(etc/chrony-erhai.conf etc/systemd/logind.conf.d/95-erhai-lid.conf)
+options=(!strip)
+source=(
+  erhai-arch-v0.6.0.tar.gz
+  chrony.conf erhai-cover.service 90-erhai-power.conf mkinitcpio.conf chronyd-erhai.conf power-key-arch.conf
+  90-erhai-chrony-dhcp
+)
+sha256sums=(
+  110e2e7f160a595fed0963287e2ce2887e9896a35f84dbabdf076917407ee945
+  948c6fb879d69ed581fd2b618681f7e874b56f29a950a7c611bc5f11990c794a
+  add6ef7561f7c69b7ef1df16286af1fd01431cb910662546aa41a166a784da52
+  cb81e1c2c74ea3f0f1d9200a18304b0fea68b9d7b2567d7202e312fd2450b720
+  0e32981104f718f5d3f5087776ff136ac66c5bd81ea7452b0d014a6bbb713042
+  0c0dd137204b26d7c360c9d370c74ad922b9889a126dbd38afce31f0656140c2
+  e414caf18f548abd84c5f7157042c262040502c43380db26beabeca12780ca33
+  64ccef02bdb6256992b4d0707c649f6a9c7121dec70540ca90b65d916a2dc592
+)
+
+package() {
+  local upstream=onepluspad-2pro-mainline-0.6.0/packaging
+  local tree=$upstream/erhai-device-support/tree
+  install -Dm755 "$tree/usr/sbin/erhai-power-key" "$pkgdir/usr/bin/erhai-power-key"
+  install -Dm644 "$tree/usr/lib/systemd/system/erhai-power-key@.service" \
+    "$pkgdir/usr/lib/systemd/system/erhai-power-key@.service"
+  install -Dm644 power-key-arch.conf \
+    "$pkgdir/usr/lib/systemd/system/erhai-power-key@.service.d/90-erhai-arch.conf"
+  install -Dm755 "$tree/usr/lib/systemd/system-sleep/erhai-suspend-cycle.sh" \
+    "$pkgdir/usr/lib/systemd/system-sleep/erhai-suspend-cycle.sh"
+  install -Dm644 "$tree/usr/lib/udev/rules.d/82-erhai-power-key.rules" \
+    "$pkgdir/usr/lib/udev/rules.d/82-erhai-power-key.rules"
+  install -Dm644 "$tree/usr/share/glib-2.0/schemas/90_erhai-power.gschema.override" \
+    "$pkgdir/usr/share/glib-2.0/schemas/90_erhai-power.gschema.override"
+  install -Dm644 "$tree/usr/share/libcamera/ipa/simple/sc1300cs.yaml" \
+    "$pkgdir/usr/share/libcamera/ipa/simple/sc1300cs.yaml"
+  install -Dm644 "$tree/usr/share/libcamera/ipa/simple/sc820cs.yaml" \
+    "$pkgdir/usr/share/libcamera/ipa/simple/sc820cs.yaml"
+  install -Dm755 "$upstream/erhai-device-support/tree/usr/sbin/erhai-cover" "$pkgdir/usr/bin/erhai-cover"
+  install -Dm644 erhai-cover.service "$pkgdir/usr/lib/systemd/system/erhai-cover.service"
+  install -Dm644 chrony.conf "$pkgdir/etc/chrony-erhai.conf"
+  install -Dm644 chronyd-erhai.conf "$pkgdir/usr/lib/systemd/system/chronyd.service.d/90-erhai.conf"
+  install -Dm755 90-erhai-chrony-dhcp "$pkgdir/usr/lib/NetworkManager/dispatcher.d/90-erhai-chrony-dhcp"
+  install -Dm644 90-erhai-power.conf "$pkgdir/etc/systemd/logind.conf.d/95-erhai-lid.conf"
+  install -Dm644 mkinitcpio.conf "$pkgdir/etc/mkinitcpio.conf.d/90-erhai-soccp.conf"
+  install -Dm644 "$upstream/firmware/qcom/sm8750/erhai/soccp.mbn" \
+    "$pkgdir/usr/lib/firmware/qcom/sm8750/erhai/soccp.mbn"
+  install -Dm644 "$upstream/firmware-manifest.json" "$pkgdir/usr/share/doc/$pkgname/firmware-manifest.json"
+  install -Dm644 "$upstream/firmware/README.md" "$pkgdir/usr/share/doc/$pkgname/firmware-README.md"
+}

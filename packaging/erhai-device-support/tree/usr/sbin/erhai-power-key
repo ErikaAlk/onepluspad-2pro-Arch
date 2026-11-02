@@ -35,8 +35,8 @@ EVIOCGRAB = 0x40044590
 #
 # CLOCK_MONOTONIC keeps running across s2idle on this board, so clocks cannot
 # detect the suspend either. Consumed once per handled press.
-RESUME_FLAG = Path('/run/erhai-suspend-cycle')
-RESUMED_STAMP = Path('/run/erhai-suspend-resumed')
+RESUME_FLAG = Path('/run/erhai-power-key/suspend-cycle')
+RESUMED_STAMP = Path('/run/erhai-power-key/suspend-resumed')
 RESUME_PRESS_WINDOW = 15
 
 

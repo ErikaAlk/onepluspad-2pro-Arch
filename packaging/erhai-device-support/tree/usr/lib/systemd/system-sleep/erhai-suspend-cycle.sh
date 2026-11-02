@@ -19,11 +19,12 @@
 # source or a failed suspend once the resume-press window has elapsed.
 case "$1" in
     pre)
-        : > /run/erhai-suspend-cycle
-        rm -f /run/erhai-suspend-resumed
+        mkdir -p /run/erhai-power-key
+        : > /run/erhai-power-key/suspend-cycle
+        rm -f /run/erhai-power-key/suspend-resumed
         ;;
     post)
-        : > /run/erhai-suspend-resumed
+        : > /run/erhai-power-key/suspend-resumed
         ;;
     *)
         exit 0

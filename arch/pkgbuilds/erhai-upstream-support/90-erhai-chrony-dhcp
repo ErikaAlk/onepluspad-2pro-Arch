@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /bin/sh /usr/share/doc/chrony/examples/chrony.nm-dispatcher.dhcp "$@"
