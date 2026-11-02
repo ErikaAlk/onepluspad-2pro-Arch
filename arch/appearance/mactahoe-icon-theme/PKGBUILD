@@ -1,0 +1,25 @@
+# erhai（一加平板 2 Pro）：macOS 风格的图标与光标，参考 AUR mactahoe-icon-theme-git，固定到 2026-09-10 发布
+# 每个图标主题目录自带 cursors 与 cursors_scalable，光标主题直接用同名目录
+
+pkgname=mactahoe-icon-theme
+_commit=839848b9a8a38a92a6936e30c4abe35cc6f2546d
+pkgver=2026.09.10
+pkgrel=1
+pkgdesc="MacOS Tahoe icon and cursor theme for Linux"
+arch=(any)
+url="https://github.com/vinceliuice/MacTahoe-icon-theme"
+license=(GPL-3.0-or-later)
+depends=(gtk-update-icon-cache hicolor-icon-theme)
+makedepends=(git)
+options=(!strip)
+source=("git+https://github.com/vinceliuice/MacTahoe-icon-theme.git#commit=$_commit")
+sha256sums=('SKIP')
+
+package() {
+  cd MacTahoe-icon-theme
+  install -d "$pkgdir/usr/share/icons"
+  ./install.sh -d "$pkgdir/usr/share/icons"
+
+  # 图标缓存由 pacman 的 gtk-update-icon-cache 钩子在安装时生成
+  rm -f "$pkgdir"/usr/share/icons/*/icon-theme.cache
+}

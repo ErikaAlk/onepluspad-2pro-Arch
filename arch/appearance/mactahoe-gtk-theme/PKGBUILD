@@ -1,0 +1,47 @@
+# erhai（一加平板 2 Pro）：macOS 风格的 GTK、GNOME Shell 与 libadwaita 主题，参考 AUR mactahoe-gtk-theme 2026.09.10-1
+# 固定到 2026-09-10 发布之后 7 个提交的上游 main，含窗口阴影与深浅色切换修复
+
+pkgname=mactahoe-gtk-theme
+_commit=1e45e19f510edb8cde18fa84d6cd5319f60b086b
+pkgver=2026.09.10.r7.1e45e19
+pkgrel=1
+pkgdesc="MacOS Tahoe theme for GTK, GNOME Shell and libadwaita (dark, blur variant, HD size)"
+arch=(any)
+url="https://github.com/vinceliuice/MacTahoe-gtk-theme"
+license=(MIT)
+makedepends=(git sassc glib2 glib2-devel libxml2 gnome-shell)
+source=("git+https://github.com/vinceliuice/MacTahoe-gtk-theme.git#commit=$_commit"
+        MacTahoe.xml)
+sha256sums=('SKIP'
+            'e97ebb31bbc86cd0042caddb75e3a9df8f4288e8a314c5f77f047a809cf3d748')
+
+# 安装脚本在 fakeroot 下会把自己当成 root 而拒绝生成 libadwaita 样式，所以在 build() 里以普通用户生成
+build() {
+  cd MacTahoe-gtk-theme
+
+  # 安装脚本把 gnome-theme-switcher 与 libadwaita 样式写进 $HOME，指向构建目录
+  export HOME="$srcdir/home"
+  # 安装脚本的进度动画调用 setterm，没有终端类型时 setterm 失败，脚本随之退出
+  export TERM=xterm
+  rm -rf "$HOME" "$srcdir/themes"
+  mkdir -p "$HOME" "$srcdir/themes"
+
+  # 深色、透明（配合 Blur my Shell）、触控用的大尺寸；-l 同时生成 libadwaita 样式
+  ./install.sh -d "$srcdir/themes" -c dark -o normal -a normal -t default -s standard -b -HD -l
+}
+
+package() {
+  cd MacTahoe-gtk-theme
+
+  install -d "$pkgdir/usr/share/themes"
+  cp -a "$srcdir/themes/." "$pkgdir/usr/share/themes/"
+
+  # libadwaita 只读用户目录的 gtk-4.0/gtk.css；这里放实体文件，链接由装配脚本按用户创建
+  install -d "$pkgdir/usr/share/mactahoe-gtk-theme/libadwaita"
+  cp -r "$srcdir/home/.config/gtk-4.0/"{gtk-Dark.css,assets,windows-assets} "$pkgdir/usr/share/mactahoe-gtk-theme/libadwaita/"
+
+  install -Dm644 wallpaper/MacTahoe-{day,night}.jpeg -t "$pkgdir/usr/share/backgrounds/MacTahoe/"
+  install -Dm644 "$srcdir/MacTahoe.xml" -t "$pkgdir/usr/share/gnome-background-properties/"
+
+  install -Dm644 COPYING -t "$pkgdir/usr/share/licenses/$pkgname/"
+}

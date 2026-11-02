@@ -1,0 +1,83 @@
+# 桌面外观仿 macOS 27：MacTahoe 主题、图标与光标，Blur my Shell 提供 Liquid Glass 与模糊；壁纸由 tools/build-wallpaper.py 生成
+[org.gnome.desktop.interface]
+color-scheme='prefer-dark'
+gtk-theme='MacTahoe-Dark'
+icon-theme='MacTahoe-dark'
+cursor-theme='MacTahoe'
+enable-animations=true
+font-name='OPPO Sans 4.0 Bold 11'
+document-font-name='OPPO Sans 4.0 Bold 12'
+monospace-font-name='Adwaita Mono 11'
+
+[org.gnome.desktop.wm.preferences]
+button-layout='close,minimize,maximize:'
+titlebar-font='OPPO Sans 4.0 Bold 11'
+
+[org.gnome.Console]
+use-system-font=false
+custom-font='Adwaita Mono 11'
+
+[org.gnome.desktop.background]
+picture-uri='file:///usr/local/share/backgrounds/erhai/erhai-card.png'
+picture-uri-dark='file:///usr/local/share/backgrounds/erhai/erhai-card.png'
+
+[org.gnome.desktop.screensaver]
+picture-uri='file:///usr/local/share/backgrounds/erhai/erhai-card.png'
+
+[org.gnome.shell]
+enabled-extensions=['dash-to-dock@micxgx.gmail.com', 'kimpanel@kde.org', 'user-theme@gnome-shell-extensions.gcampax.github.com', 'blur-my-shell@aunetx', 'erhai-unlock@erhai.local', 'lintel@topbar', 'erhai-motion@erhai.local', 'glasslight']
+
+favorite-apps=['org.gnome.Nautilus.desktop', 'org.gnome.Console.desktop', 'org.gnome.TextEditor.desktop', 'org.gnome.Settings.desktop']
+
+[org.gnome.shell.extensions.user-theme]
+name='MacTahoe-Dark'
+
+# 底部居中的悬浮 dock，常驻显示；背景交给 MacTahoe 外壳主题与 Blur my Shell
+[org.gnome.shell.extensions.dash-to-dock]
+apply-custom-theme=false
+disable-overview-on-startup=true
+show-mounts-only-mounted=false
+show-mounts-network=true
+dock-position='BOTTOM'
+dock-fixed=true
+extend-height=false
+icon-size-fixed=true
+running-indicator-style='DOT'
+scroll-action='switch-workspace'
+click-action='focus-or-appspread'
+shift-click-action='launch'
+middle-click-action='launch'
+shift-middle-click-action='minimize'
+
+# 前五条与扩展自带的默认管线相同；pipeline_erhai_window 取 MacTahoe 作者推荐的窗口模糊（半径 50、亮度 1）
+[org.gnome.shell.extensions.blur-my-shell]
+pipelines={'pipeline_default': {'name': <'Default'>, 'effects': <[<{'type': <'dual_kawase_blur'>, 'id': <'effect_000000000000'>, 'params': <{'unscaled_radius': <30>, 'brightness': <0.6>}>}>]>}, 'pipeline_liquid_glass': {'name': <'Liquid Glass'>, 'effects': <[<{'type': <'luminosity'>, 'id': <'effect_liquid_glass_luminosity'>, 'params': <{'saturation_multiplicator': <1.1>}>}>, <{'type': <'refraction'>, 'id': <'effect_liquid_glass_refraction'>, 'params': <{'tint': <0>}>}>, <{'type': <'noise'>, 'id': <'effect_liquid_glass_noise'>, 'params': <{'noise': <0.1>}>}>]>}, 'pipeline_vapor_glass': {'name': <'Vapor Glass'>, 'effects': <[<{'type': <'luminosity'>, 'id': <'effect_vapor_glass_luminosity'>, 'params': <{'saturation_multiplicator': <1.1>}>}>, <{'type': <'wave'>, 'id': <'effect_vapor_glass_wave'>}>, <{'type': <'refraction'>, 'id': <'effect_vapor_glass_refraction'>, 'params': <{'tint': <0>}>}>, <{'type': <'noise'>, 'id': <'effect_vapor_glass_noise'>, 'params': <{'noise': <0.1>}>}>]>}, 'pipeline_classic_light_background': {'name': <'Classic Light Background'>, 'effects': <[<{'type': <'dual_kawase_blur'>, 'id': <'effect_classic_light_blur'>, 'params': <{'unscaled_radius': <30>, 'brightness': <0.6>}>}>, <{'type': <'color'>, 'id': <'effect_classic_light_color'>, 'params': <{'color': <(1.0, 1.0, 1.0, 0.25)>, 'blend_mode': <17>}>}>]>}, 'pipeline_classic_dark_background': {'name': <'Classic Dark Background'>, 'effects': <[<{'type': <'dual_kawase_blur'>, 'id': <'effect_classic_dark_blur'>, 'params': <{'unscaled_radius': <30>, 'brightness': <0.6>}>}>, <{'type': <'color'>, 'id': <'effect_classic_dark_color'>, 'params': <{'color': <(0.4, 0.4, 0.4, 0.35)>, 'blend_mode': <17>}>}>]>}, 'pipeline_erhai_window': {'name': <'Window'>, 'effects': <[<{'type': <'dual_kawase_blur'>, 'id': <'effect_erhai_window_blur'>, 'params': <{'unscaled_radius': <50>, 'brightness': <1.0>}>}>]>}}
+
+# macOS 27 的菜单栏不加底色，保持透明
+[org.gnome.shell.extensions.blur-my-shell.panel]
+blur=false
+
+[org.gnome.shell.extensions.blur-my-shell.dash-to-dock]
+blur=true
+static-blur=false
+pipeline='pipeline_liquid_glass'
+style-dash-to-dock=0
+
+[org.gnome.shell.extensions.blur-my-shell.popup]
+blur=true
+static-blur=false
+pipeline='pipeline_liquid_glass'
+
+[org.gnome.shell.extensions.blur-my-shell.overview]
+style-components=0
+
+# MacTahoe 的模糊版主题让窗口侧栏与标题栏半透明，窗口本身保持不透明，透出的是窗口后面的模糊
+[org.gnome.shell.extensions.blur-my-shell.applications]
+blur=true
+static-blur=false
+enable-all=true
+opacity=255
+dynamic-opacity=false
+pipeline='pipeline_erhai_window'
+# 以下应用不用 GTK 主题绘制，窗口本身不透明，跳过窗口后面的模糊；匹配窗口类名，不区分大小写
+blacklist=['Plank', 'Conky', 'google-chrome*', 'code', '1password', 'v2rayN', 'waydroid*']
