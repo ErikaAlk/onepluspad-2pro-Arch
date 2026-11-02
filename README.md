@@ -1,215 +1,85 @@
-# Arch for OnePlus Pad 2 Pro
+# 一加平板 2 Pro · Arch Linux ARM
 
-在一加平板 2 Pro 上运行 Arch Linux ARM、GNOME Wayland 与 Waydroid。
-本仓库基于 [yzddmr6/onepluspad-2pro-mainline](https://github.com/yzddmr6/onepluspad-2pro-mainline)，保留上游署名与许可证。
+在一加平板 2 Pro 上运行 Arch Linux ARM、GNOME Wayland，并与 Android 双系统共存。此仓库维护 ErikaAlk 的定制内核、Arch 配套包与桌面外观，基于 [yzddmr6/onepluspad-2pro-mainline](https://github.com/yzddmr6/onepluspad-2pro-mainline)。
 
-Arch 定制源码、固定版本、构建和验证入口见 [Arch 说明](docs/ARCH.zh-CN.md) 与 [`arch/`](arch/)。设备范围为 OPD2413 / SM8750P；Android 双系统和用户数据必须保留。当前没有发布供其他设备直接刷写的 Arch 镜像。
+目前提供源码与构建入口，尚未发布可供其他设备直接安装的完整 Arch 镜像。已验证设备为 OPD2413、SM8750P、16 GB / 512 GB、ColorOS C.35；其他机型、容量和固件尚未验证。
 
-## 上游 Ubuntu 参考内容
+## 当前状态
 
-以下内容保留上游 Ubuntu 发行版的使用说明与验证范围。Arch 的构建入口和本机验证结果以 [Arch 说明](docs/ARCH.zh-CN.md) 为准。
+上游基线为 v0.6.0，定制内核为 `7.2.14-erhai-arch-v06+`。保留 UFCS/PPS、Waydroid 所需配置、USBSS 充电路径和相机 CCI/DMA 安全修复；内核、支持包和传感器程序均有固定源码构建入口。
 
-Official builds are published only in this repository's [Releases](https://github.com/yzddmr6/onepluspad-2pro-mainline/releases), free of charge.
-
-## 🧭 Our Approach
-
-There are roughly two ways to bring a Linux desktop to an Android tablet.
-
-One is **make it work first, then adapt**: keep the vendor's downstream drivers and patch the desktop and applications wherever they do not cooperate. Features arrive quickly, but the device's quirks end up spread across the kernel, the desktop and the applications, tied together, and every system upgrade means reworking those changes.
-
-The other is **stay close to upstream, in clean layers**: solve hardware problems in the kernel and drivers the way mainline does, keep Ubuntu, GNOME and the rest unmodified, and let the system recognise the device through standard interfaces. It is slower and harder; many problems can only be fixed once their root cause is found.
-
-We chose the second.
-
-| | Make it work, then adapt | Stay close to upstream (this project) |
-|---|---|---|
-| Kernel and drivers | Vendor downstream drivers plus temporary workarounds | Mainline kernel and upstream drivers (for example the upstream ath12k driver for Wi-Fi); missing pieces added the upstream way, with device tree bindings |
-| Desktop and apps | Desktop components modified to suit this device | Official Ubuntu Desktop packages installed unchanged; device support lives in a few separate `erhai-*` packages |
-| When something breaks | Add delays, retries and compatibility layers until it works | Find the root cause and fix it in the layer where it lives |
-| System upgrades | Every change has to be reworked, upgrades can get stuck | Normal upgrades with the upstream kernel and Ubuntu |
-| Reuse by others | Depends on this whole set of specific changes | Low cost to move to another distribution or a device with the same SoC |
-
-**Why:**
-
-- **Decoupling.** Differences in the display, touch and charging hardware are described by the kernel and the device tree; the desktop just sees a standard display, touchscreen and battery and does not need to know which tablet it runs on.
-- **Upgrades are not held hostage.** The fewer the changes, the smoother the upgrades: the kernel can follow new upstream releases and Ubuntu updates install as usual. The few components that must be changed, such as the Mesa graphics driver, ship as separate packages that track upstream and are dropped once upstream supports the feature.
-- **Fix once, everyone benefits.** A problem solved the upstream way helps other devices with the same SoC and other distributions; upstream fixes, in turn, apply here directly.
-- **Reproducible and maintainable.** Every release is assembled only from inputs whose source and checksum are recorded, so it can be rebuilt from source; few changes with clear boundaries make problems easy to locate instead of piling up.
-
-The price is that features arrive more slowly, and some problems take a long time to trace to their root cause. When the default video player occasionally crashed, for example, we did not fall back to software rendering for it; we traced the crash to unsynchronised texture numbering in the graphics driver and fixed it in Mesa. We accept that price, because this is the route that holds up over time.
-
-## 📮 Follow & Discuss
-
-Project updates, usage notes and discussion are available through these channels,
-primarily in Chinese.
-
-| WeChat: 熵减矩阵 | Xiaohongshu: yzddmr6 |
-|:---:|:---:|
-| <img src="docs/assets/gzh-qr.png" width="200" alt="WeChat: 熵减矩阵"> | <img src="docs/assets/xhs-qr.jpg" width="200" alt="Xiaohongshu: yzddmr6"> |
-| Progress and technical notes | Usage and discussion |
-
-## ⚠️ Read Before Installing
-
-- **Device scope:** OnePlus Pad 2 Pro, **OPD2413 / erhai / SM8750P**. Testing has
-  used a **16 GB RAM / 512 GB storage** unit. OnePlus Pad 3, other capacities and
-  other firmware or partition layouts have not been validated.
-- **Installation scope:** first-time partition preparation, Linux installation
-  and reinstallation are provided for the 512 GB model. First-time partitioning
-  erases Android data. See the [installation and recovery guide](docs/FLASHING.md)
-  for firmware and layout requirements.
-- **Power:** Linux net-charges the battery from a USB PD charger and requests its
-  9 V contract (up to 18 W input). On a computer's USB port with the screen on, the
-  tablet uses more than the port supplies and the battery still drains slowly. The
-  stock SUPERVOOC fast charging is not available under Linux. Fastboot is not a
-  charging fallback.
-  Closing the keyboard cover or a case suspends the tablet; the power button locks the
-  screen and suspends, and the next press wakes it. In suspend the SoC reaches its deepest
-  power states. When idle, the screen dims and blanks with Ubuntu's defaults and the tablet
-  suspends on battery; unplugged standby drain has not been measured yet.
-  See [System suspend](docs/SUSPEND.md) for timings and the blank-only opt-out.
-- **Data and recovery:** unlocking the bootloader erases user data. Back up
-  personal files and obtain matching stock firmware before changing the device.
-  Keep factory calibration and device addresses specific to each tablet.
-- **Debug access:** USB diagnostics are for development. When enabled, they
-  expose an unauthenticated root shell and HTTP service. Connect only to a
-  trusted computer and keep these services off public networks.
-
-## 🚀 Getting Started
-
-Device firmware and stock boot build inputs are included; no manual ROM
-extraction is needed. Stock inputs use **ColorOS `OPD2413_11.C.34_1340_202607031844`**;
-other firmware sources are listed in the [firmware notes](packaging/firmware/README.md). Run `tools/prepare-inputs.py` as described in the build guide.
-
-| I want to | Read |
+| 项目 | 本机验证范围 |
 |---|---|
-| Check whether the tablet meets my needs | [Hardware support](#hardware-support) |
-| Switch between Android and Ubuntu | [Dual boot](#dual-boot) |
-| Build the kernel and device components | [Build guide](docs/BUILD.md) |
-| Check installation requirements and recovery | [Installation and recovery](docs/FLASHING.md) |
-| Install from the release images without building | [Prebuilt release images](docs/FLASHING.md#prebuilt-release-images) |
-| Work on the graphics stack | [Graphics integration](docs/GRAPHICS.md) |
-| Check suspend and the power button | [System suspend](docs/SUSPEND.md) |
-| Check the panel backlight and brightness | [Display and backlight](docs/DISPLAY.md) |
-| Bring up or check the sensors | [SSC sensors](docs/SENSORS.md) |
-| Contribute code or report a problem | [Contributing](CONTRIBUTING.md) |
-| Read release history | [Changelog](CHANGELOG.md) |
+| 启动与桌面 | v0.6 已持久安装并正常启动，GDM 自动登录、GNOME Wayland 可用 |
+| 图形 | Adreno 830v1，真实 Vulkan 240 帧绘制通过 |
+| 相机 | 前摄 1632×1224、后摄 2104×1560 严格 RAW 各 60 帧；软件 ISP 图像模式各 60 帧通过 |
+| 传感器 | 原生组件与设备配置已补齐，真实加速度可读；平放静置后的重力校验失败，自动旋转尚未通过 |
+| Waydroid | 保留集成；AArch64/Bionic 图形库与 GPU 条目已核验，本轮未取得容器运行通过证据 |
+| 充电 | 保留 PD、PPS 与 UFCS 相关实现；本轮未验证真实充电会话，原厂 SUPERVOOC 不可用 |
+| 休眠与唤醒 | 已整合上游修复，本轮未重测 |
+| 手写笔 | 保留驱动支持，位置、压感与防飘移尚无本机通过证据 |
 
-## Dual Boot
+上述记录对应 2026-11-02 的本机验收。完整构建、安装边界与限制见 [Arch 说明](docs/ARCH.zh-CN.md)。上游 Ubuntu 的硬件结论分别保存在其文档中。
 
-On a tablet with both systems installed, Ubuntu uses a separate Linux root
-partition while Android retains its own system and data. Routine switching
-requires a reboot; it does not reinstall either system or erase user files.
+## 构建内核与设备支持包
 
-| Current system | How to switch |
+在 Linux 文件系统中工作，准备 Git、Python、base-devel、AArch64 交叉编译器、ccache 与 QEMU AArch64。详细依赖和构建过程见 [Arch 说明](docs/ARCH.zh-CN.md)；固定版本与哈希见 [`arch/source.json`](arch/source.json)。
+
+```sh
+git clone https://github.com/ErikaAlk/onepluspad-2pro-Arch.git
+cd onepluspad-2pro-Arch
+git fetch origin feat/arch-v0.6
+bash arch/tools/prepare-kernel.sh "$PWD/out/kernel"
+bash arch/tools/build-kernel.sh "$PWD/out/kernel" "$PWD/out/kernel-build"
+bash arch/tools/test-camss.sh "$PWD/out/kernel" "$PWD/out/camss-kunit"
+bash arch/tools/build-support.sh "$PWD/out/support"
+bash arch/tools/build-sensors.sh "$PWD/out/sensors"
+```
+
+这些入口输出内核、模块和 Arch 配套包。完整根系统装配与适用于其他设备的全新安装流程尚未完成公开验收。
+
+## 可选：洱海玻璃外观
+
+外观组件独立于内核和硬件支持包。需要这套界面时，在现有 GNOME Shell 51 中单独安装和启用。
+
+| 组件 | 改造内容 |
 |---|---|
-| Ubuntu → Android | Open **Switch to Android** from the application list, enter the administrator password and wait for the automatic reboot. |
-| Android → Ubuntu | Open the **erhai dual boot switch** module's WebUI in KernelSU and select **Reboot to Ubuntu**. |
+| [Lintel 改版](https://github.com/ErikaAlk/lintel) | 菜单栏、应用实际导出的菜单、触控控制中心、日历通知、实时充电功率 |
+| [Glasslight 改版](https://github.com/ErikaAlk/glasslight) | 启动台、应用文件夹、触控拖动、搜索、键盘整理与中文输入法适配 |
+| `erhai-motion` + Blur my Shell 77 | 实时背景捕获、折射、模糊、连续圆角、动态明暗与弹性动效 |
+| MacTahoe + Dash to Dock | 深色 GTK / Shell、图标和光标、底部居中的常驻 Dock，单独选择加载 |
 
-Both systems use the same active boot slot; the tested layout uses slot A.
-The switcher writes the target system's `boot`, `init_boot` and `vendor_boot`
-images as a set, reads them back for verification, then reboots. The other
-system's images remain in the switcher storage on the Linux partition.
-Routine switching does not change the active slot.
+精调玻璃参数、GLSL 着色器和样式完整保存在 [`arch/appearance/`](arch/appearance/)。共享材质使用饱和度 `1.05`、折射模糊半径 `14`、色散 `0.03`、高光强度 `0.10`、噪点 `0.025`、圆角平滑度 `0.6`，同时保留桌面原始管线配置。
 
-Switching writes the boot partitions. Do not interrupt power or force a restart
-during the operation. See [installation and recovery](docs/FLASHING.md) for
-requirements and recovery, and the [switcher reference](switch/README.md) for
-implementation details.
+按 [外观安装说明](docs/APPEARANCE.zh-CN.md) 准备依赖后执行：
 
-## Hardware Support
+```sh
+bash arch/appearance/build.sh "$PWD/out/appearance"
+bash arch/appearance/install.sh "$PWD/out/appearance"
+gjs -m arch/appearance/configure.js enable
+```
 
-The tables below describe current hardware support and known limitations.
-“Working” means tested on hardware within the stated scope. Features under
-development are not included in the supported feature set.
+退出 GNOME 并重新登录后加载。`Super+A` 或 Dock 的应用按钮打开启动台。停用并恢复启用前的玻璃参数及相关扩展状态：
 
-✅ Working · 🟡 Partial · 🔧 In development / Awaiting testing · ❌ Unsupported
+```sh
+gjs -m arch/appearance/configure.js disable
+```
 
-### Platform, Display and Input
+MacTahoe、Dock、GTK4 和字体的安装方式、完整外观选项、依赖版本与验证范围，见 [外观安装说明](docs/APPEARANCE.zh-CN.md)。未选择外观选项时，内核和设备支持包的构建不会安装或启用这些扩展。
 
-| Feature | Component / Implementation | Status | Scope and limitations |
-|---|---|---|---|
-| Boot and storage | SM8750P / UFS | ✅ | Ubuntu boot and storage access work. Dual-boot switching is limited to the tested layout described above. |
-| Internal display | Dual DSI / DSC | ✅ | 3392 × 2400 at 120 Hz. Other refresh rates await hardware testing. |
-| Touch | Novatek NT36536 | ✅ | Finger input, desktop interaction and login verified. Pen support is tracked separately. |
-| GPU and desktop | Adreno 830 / Freedreno / Turnip / Mesa | 🟡 | GNOME, OpenGL and Vulkan hardware rendering work: glmark2 completes all scenes, and Vulkan runs through Turnip (vkcube, vkmark). Sandboxed applications and sustained loads need testing. |
-| Brightness | Dual KTZ8868 / one backlight interface | 🟡 | Unified brightness control and blanking are integrated; the slider’s usable brightness range needs physical testing. |
-| Magnetic keyboard | Pogo keyboard / touchpad | 🟡 | Keyboard input works and the keyboard stays connected while idle and after system sleep. The on-screen keyboard appears for touch input while the keyboard is detached and hides when it is attached. Holding the magnifier key turns the top row into F1 to F12. Touchpad gestures need testing. |
-| Active pen | NT36536 pen input | 🔧 | Pen input code is available; position, pressure and buttons await physical testing. |
-| Pen charging | CPS8601 | ❌ | Charging, battery reporting and automatic scan control are not implemented. |
+## 安装与双系统
 
-### Wireless and USB
+Android 系统与用户数据必须保留。首次解锁或重新分区会清除数据，执行前必须完成备份，准备匹配当前固件的恢复镜像。写启动分区前先以内存启动验证，保存当前 Android 与 Linux 的启动三件套；写入后读回校验，再验证正常启动。
 
-| Feature | Component / Implementation | Status | Scope and limitations |
-|---|---|---|---|
-| Wi-Fi | WCN7860 / ath12k | ✅ | Networking, automatic reconnect at boot and short transfers work. v0.2.2 enables userspace regulatory hints and includes the ath12k frequency-range fix; packages leave the radio in world domain `00`. 5 GHz uses passive scanning and cannot host a hotspot; roaming, 2.4 GHz hotspot operation and sustained transfers need testing. Changing the country code while associated has caused WLAN firmware crashes; do not do so. |
-| Bluetooth | WCN7860 / BlueZ | 🟡 | Controller, firmware, discovery and per-device address verified; keyboard, mouse and headset use remain unverified. |
-| USB device mode | USB-C / NCM | 🟡 | USB networking works. Some reconnects failed to restore the connection and required a reboot. |
-| USB host peripherals | HID, storage, network and digital audio | 🟡 | Devices connected directly through a USB-C to USB-A adapter receive power: a USB drive was recognized and mounted on two consecutive insertions. Mouse use through the tested dock works without external PD power. Other peripherals remain untested. |
-| USB storage formats | UAS, exFAT and NTFS3 | 🟡 | An NTFS USB drive mounts automatically on the desktop, and Chinese filenames are written and read back. exFAT and NTFS3 pass the same filename check on disk images on the tablet. UAS drives remain untested. |
-| External display | USB-C DisplayPort Alt Mode | 🟡 | Output on a physical monitor is confirmed. Display-mode selection and hotplug stability still need testing. |
-| External display audio | DisplayPort / ALSA / PipeWire | ❌ | Disabled by default: playback configuration prevents microphone discovery with no monitor attached. Playback and hotplug recovery need further work and testing. |
+现有双系统通过 [切换组件](switch/README.md) 切换启动三件套并重启。切换时会写入 `boot`、`init_boot`、`vendor_boot`，操作期间保持供电，避免中断。目录名称中保留上游的 `ubuntu` 标识，具体根系统可为本项目 Arch。
 
-### Audio, Video and Sensors
+[上游安装与恢复文档](docs/FLASHING.md) 描述 Ubuntu 安装流程，阅读时须核实固件和分区要求。本仓库当前没有面向其他设备验证完成的 Arch 一键安装流程。
 
-| Feature | Component / Implementation | Status | Scope and limitations |
-|---|---|---|---|
-| Internal microphones | WCD939x / ALSA / PipeWire | 🟡 | Default input and two-channel capture work. With ADC 13 / TX DEC 112, normal speech at about 30 cm peaks around -8 dBFS without clipping. Background-noise performance remains uncharacterized. |
-| Speakers | Six AW88261 amplifiers / AudioReach | 🟡 | The opt-in candidate at amplifier value 350 (-2.5 dB) passed listening checks for channel position, loudness and sound quality. Playback remains disabled by default and has no vendor speaker protection. |
-| USB-C analog audio | WCD939x headset path | ❌ | Analog adapters and headset detection are not implemented. Digital USB audio is tracked above. |
-| Video playback in desktop players | Ubuntu GStreamer packages / Iris | 🟡 | Showtime, the default player, plays H.264, H.265 and VP9 with hardware decoding and keeps playing after seeking. Other players and long playback are untested. |
-| Hardware video codecs | Qualcomm Iris | 🟡 | H.264, H.265 and VP9 hardware decoding works in the default player through GStreamer and in Firefox through VA-API. Hardware encoding is untested. |
-| Front and rear cameras | SC820CS / SC1300CS | 🟡 | The default Camera app (Snapshot) previews and takes photos with both cameras, at about 28 fps for a 1080p preview. White balance is automatic (grey world), so a scene dominated by one colour gets an overall tint; there is no lens-shading correction, so the corners are darker; focus is fixed at a distance, so close objects are soft; dim scenes are noisy. Video calls are untested. |
-| Automatic rotation | SSC / iio-sensor-proxy | ✅ | With the keyboard detached, the screen follows the orientation in all four directions, each the right way up. With the keyboard attached it stays fixed, as on a laptop. |
-| Automatic brightness | SSC ambient light / GNOME | 🟡 | The light sensor reaches GNOME, and with automatic brightness enabled the backlight level adjusted on hardware (1500 → 1805 of 2047). Idle dimming and blanking follow Ubuntu defaults; their interaction with automatic brightness needs hardware verification. |
-| Compass and gyroscope | SSC / iio-sensor-proxy | 🟡 | Heading and angular velocity are read over D-Bus on the installed v0.2.0 system and keep updating after suspend. No desktop application uses them yet. |
-| Proximity | SSC | ❌ | The DSP does not publish the proximity sensor on this unit, and `libssc` has no SAR implementation. |
+## 文档与来源
 
-### Power, Time and Applications
+- [Arch 源码、构建与本机验证](docs/ARCH.zh-CN.md)
+- [可选外观与两个改版扩展](docs/APPEARANCE.zh-CN.md)
+- [图形与 Mesa](docs/GRAPHICS.md)、[传感器](docs/SENSORS.md)、[休眠](docs/SUSPEND.md)
+- [上游集成仓库](https://github.com/yzddmr6/onepluspad-2pro-mainline) 与 [上游内核](https://github.com/yzddmr6/linux-sm8750-erhai)
 
-| Feature | Component / Implementation | Status | Scope and limitations |
-|---|---|---|---|
-| Cover | Hall switch / logind | ✅ | Closing the keyboard cover or a case suspends the tablet within about a second; opening it wakes the tablet and lights up the screen. Touch input is ignored while the cover is closed. Closing and opening the cover does not wake a suspend entered with the cover open (for example with the power button); press the power button instead. |
-| Power button | Linux input / GNOME | ✅ | A press locks the screen and enters s2idle suspend; the next press wakes the tablet to the lock screen, verified in three of three attempts. Set `/etc/erhai/power-key-action` to `blank` for lock-and-blank only. |
-| Volume keys | GPIO / PMIC PON input | ✅ | Volume up reports `KEY_VOLUMEUP` (115); all 10 physical presses passed. Volume down remains mapped to `KEY_VOLUMEDOWN`. |
-| CPU frequency and temperature | SCMI / IIO / thermal | 🟡 | Frequency scaling and temperature readings work. Sustained-load thermal control and enclosure-temperature management remain incomplete. |
-| Battery reporting | qcom_battmgr / UPower | ✅ | Capacity and runtime estimates available; charging behavior is a separate limitation. |
-| Charging in Linux | USB power / vendor firmware | 🟡 | With a USB PD charger the tablet requests the 9 V contract (previously 5 V), up to 18 W input; the 9 V contract was established on hardware. On a computer's USB port (about 2.5 W) with the screen on, the battery still drains by about 2–3 % per hour. The stock SUPERVOOC fast charging is not available under Linux; PPS fast charging through the charge pumps is implemented but off by default while it is being verified. |
-| Suspend and resume | Linux power management | ✅ | Defaults to s2idle. In suspend the SoC reaches its deepest power states (CX power collapse, DDR self-refresh): 98–99 % of the time in 23 consecutive 10-minute suspends, each preceded by a full CPU load and repeated GPU wake-ups, with Wi-Fi and the keyboard recovering each time and both cameras streaming after every fifth suspend. Cover, power-button and RTC wake are supported. Unplugged standby drain has not been measured yet; the firmware-advertised `deep` state is not used by default. See [System suspend](docs/SUSPEND.md). |
-| RTC | Qualcomm PMIC RTC | ✅ | Time read/write verified. A forced reset loses the RTC time; it is set again once the tablet is online: the certificate time check no longer blocks the first synchronization, and on networks that block authenticated time (NTS) the network's own time server is used. The synchronized time is written back to the RTC and survives a normal restart. |
-| Snap applications | AppArmor / snapd / graphics runtime | ❌ | Full confinement and graphical Snap apps are unsupported in this release. The selected kernel does not enable AppArmor. |
-| Android applications | Android runtime | ❌ | Waydroid is not integrated. |
-
-## Use and Maintenance
-
-The base system comes from the official Ubuntu Desktop image. Device support is
-delivered as separate `erhai-*` packages; Ubuntu packages remain managed by APT.
-Firefox comes from Mozilla's APT repository (`erhai-firefox`) instead of the
-snap, so that it renders with the device graphics driver and updates through APT.
-The display-power adapter currently targets GNOME Settings Daemon 50; desktop
-major-version upgrades need compatibility checks.
-
-For problem reports, include the model, firmware and package versions,
-reproduction steps and relevant logs. Remove credentials, serial numbers and
-personal information before sharing. Use the channels above for discussion.
-
-## Development and Contributions
-
-| Repository | Owns |
-|---|---|
-| [onepluspad-2pro-mainline](https://github.com/yzddmr6/onepluspad-2pro-mainline) | Device packages, userspace integration, build tools and documentation |
-| [linux-sm8750-erhai](https://github.com/yzddmr6/linux-sm8750-erhai) | Linux kernel source, drivers, device trees and kernel configuration |
-
-The kernel revision used for builds is recorded in [kernel/source.json](kernel/source.json).
-See the [build guide](docs/BUILD.md) and [contribution guide](CONTRIBUTING.md).
-
-## Acknowledgements and License
-
-This project builds on Linux, Ubuntu, GNOME, Freedreno/Mesa and the Linux Qualcomm
-community. Device integration draws on work from
-[ROCKNIX](https://github.com/ROCKNIX/distribution), OnePlus and LineageOS, and
-uses AudioReach and the SSC sensor stack.
-
-Original integration code is licensed under **GPL-2.0-only**, unless a file
-states otherwise. The Linux kernel and third-party components retain their own
-licenses and authorship. See [LICENSE](LICENSE), [NOTICE](NOTICE), and the
-[firmware provenance and distribution restrictions](packaging/firmware/README.md).
+感谢原作者与 Linux、Arch Linux ARM、GNOME、Freedreno/Mesa、Linux Qualcomm 社区，以及各组件的贡献者。原始集成代码按 [GPL-2.0-only](LICENSE) 分发；内核、桌面扩展和第三方资源遵循各自许可，详见 [NOTICE](NOTICE) 与 [固件来源](packaging/firmware/README.md)。个人设备配置、签名私钥、字体原件和原始摄像头图像不随源码发布。

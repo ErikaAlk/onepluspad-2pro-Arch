@@ -84,3 +84,21 @@ packaging/install-tools/ext2simg.c is the unchanged AOSP e2fsprogs converter,
 Copyright (C) 2016 The Android Open Source Project, under Apache-2.0. Its exact
 source revision and Ubuntu library inputs are recorded in the adjacent
 source.json. The downloaded libraries retain their own copyright and licenses.
+
+可选桌面外观
+------------
+Lintel 洱海改版：https://github.com/ErikaAlk/lintel
+上游为 eliotBenitez/lintel，保留 GPL-2.0-or-later；menuSources.js 与 cascade.js
+的 TPCT 来源及 GPL-3.0-or-later 许可保存在该 fork 的 LICENSE-menuSources。
+
+Glasslight 洱海改版：https://github.com/ErikaAlk/glasslight
+上游为 eliotBenitez/glasslight，保留 GPL-3.0 许可。
+
+arch/appearance/erhai-motion 保留完整着色器、连续圆角和材质实现，使用同目录
+GPL-3.0 许可证；GLSL 文件内保留原作者与授权声明。Blur my Shell 的固定来源为
+https://github.com/aunetx/blur-my-shell，figma-squircle 1.1.0 使用 MIT，构建时
+连同许可证安装。两个 fork 的固定提交在 arch/appearance/sources.sh 中记录。
+
+MacTahoe 主题、图标和 Dock 的来源与许可在各 PKGBUILD 中记录。Apple 图标资源
+在用户构建时从官方地址获取并核验，OPPO 字体由用户另行获取；这些资源的原件
+没有放入本仓库，项目代码许可证不改变其权利归属。

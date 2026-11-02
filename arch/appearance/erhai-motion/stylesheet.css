@@ -1,0 +1,154 @@
+/* 材质由实时折射组件绘制，文字保留独立清晰层。 */
+.lintel-cc-menu .popup-menu-content.lintel-cc-popup {
+    background-color: transparent !important;
+    background-image: none;
+    box-shadow: none;
+    border-color: transparent;
+}
+
+.lintel-system-menu .lintel-system-menu-content.bms-popup-liquid-glass,
+.lintel-status-menu .lintel-system-menu-content.bms-popup-liquid-glass,
+.tpct-appmenu-menu .popup-menu-content.bms-popup-liquid-glass,
+.notification-banner.bms-popup-liquid-glass,
+.osd-window.bms-popup-liquid-glass,
+.modal-dialog.bms-popup-liquid-glass,
+.lintel-cc-tile.bms-popup-liquid-glass,
+.lintel-cc-media.bms-popup-liquid-glass,
+.lintel-cc-slider.bms-popup-liquid-glass,
+.lintel-cc-edit-controls.bms-popup-liquid-glass,
+.lintel-cc-edit-toolbar.bms-popup-liquid-glass,
+.lintel-cc-gallery.bms-popup-liquid-glass,
+.lintel-cc-output-page.bms-popup-liquid-glass,
+.lintel-nc-dark .lintel-nc-widget-card.bms-popup-liquid-glass,
+#lintelNotificationCenter.lintel-nc-dark .message.bms-popup-liquid-glass,
+#lintelNotificationCenter.lintel-nc-dark .message.bms-popup-liquid-glass:hover,
+#lintelNotificationCenter.lintel-nc-dark .message.bms-popup-liquid-glass:second-in-stack,
+#lintelNotificationCenter.lintel-nc-dark .message.bms-popup-liquid-glass:lower-in-stack,
+#lintelNotificationCenter.lintel-nc-dark .message.bms-popup-liquid-glass.lintel-nc-collapsed-stack-front,
+.lintel-nc-edit-button.bms-popup-liquid-glass,
+.lintel-nc-widget-gallery.bms-popup-liquid-glass,
+.lintel-nc-widget-edit-pill.bms-popup-liquid-glass,
+.lintel-charge-toast.bms-popup-liquid-glass {
+    background-color: rgba(20, 24, 30, 0.28);
+    -erhai-background-color: rgba(20, 24, 30, 0.28);
+    background-gradient-direction: none;
+    border-color: rgba(255, 255, 255, 0.24);
+    -erhai-border-color: rgba(255, 255, 255, 0.24);
+    box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.18);
+    color: rgba(255, 255, 255, 0.98);
+}
+
+.lintel-cc-tile.bms-popup-liquid-glass:hover,
+.lintel-cc-media.bms-popup-liquid-glass:hover,
+.lintel-nc-dark .lintel-nc-widget-card.bms-popup-liquid-glass:hover {
+    background-color: rgba(20, 24, 30, 0.22);
+    -erhai-background-color: rgba(20, 24, 30, 0.22);
+}
+
+.lintel-cc-tile.bms-popup-liquid-glass:checked {
+    background-color: rgba(20, 24, 30, 0.28);
+    -erhai-background-color: rgba(20, 24, 30, 0.28);
+}
+
+.lintel-cc-tile.lintel-cc-tile-compact.bms-popup-liquid-glass:checked,
+.lintel-cc-tile.lintel-cc-sharing.bms-popup-liquid-glass {
+    -erhai-background-color: #ffffff;
+}
+
+.lintel-nc-light .lintel-nc-widget-card.bms-popup-liquid-glass {
+    background-color: rgba(245, 248, 252, 0.28);
+    -erhai-background-color: rgba(245, 248, 252, 0.28);
+    border-color: rgba(255, 255, 255, 0.36);
+    -erhai-border-color: rgba(255, 255, 255, 0.36);
+}
+
+.erhai-glass-light.bms-popup-liquid-glass,
+.erhai-glass-light.bms-popup-liquid-glass:hover {
+    background-color: rgba(245, 248, 252, 0.24);
+    -erhai-background-color: rgba(245, 248, 252, 0.24);
+    color: rgba(12, 16, 22, 0.96);
+}
+
+.erhai-glass-light.bms-popup-liquid-glass StLabel,
+.lintel-system-menu-content.erhai-glass-light .popup-menu-item,
+.lintel-system-menu-content.erhai-glass-light .popup-menu-icon,
+.lintel-system-menu-content.erhai-glass-light .popup-menu-arrow {
+    color: rgba(12, 16, 22, 0.96);
+    text-shadow: none;
+}
+
+.lintel-charge-toast.erhai-glass-light .lintel-charge-toast-tier {
+    background-color: rgba(12, 16, 22, 0.10);
+}
+
+.lintel-charge-toast.erhai-glass-light .lintel-charge-toast-power {
+    color: rgba(12, 16, 22, 0.62);
+}
+
+.lintel-cc-tile.erhai-glass-light .lintel-cc-tile-icon {
+    color: rgba(12, 16, 22, 0.94);
+}
+
+.lintel-cc-tile.erhai-glass-light:checked .lintel-cc-tile-icon {
+    color: #0a84ff;
+}
+
+.erhai-glass-light .lintel-cc-slider-icon,
+.erhai-glass-light .lintel-cc-slider-trailing-icon,
+.erhai-glass-light .lintel-cc-media-control {
+    color: rgba(12, 16, 22, 0.94);
+}
+
+.erhai-glass-light .lintel-cc-track {
+    -barlevel-background-color: rgba(12, 16, 22, 0.16);
+    -barlevel-active-background-color: rgba(12, 16, 22, 0.94);
+}
+
+#lintelNotificationCenter .lintel-nc-widget-card.erhai-glass-light.bms-popup-liquid-glass,
+#lintelNotificationCenter .message.erhai-glass-light.bms-popup-liquid-glass,
+#lintelNotificationCenter .message.erhai-glass-light.bms-popup-liquid-glass:hover,
+#lintelNotificationCenter .message.erhai-glass-light.bms-popup-liquid-glass:second-in-stack,
+#lintelNotificationCenter .message.erhai-glass-light.bms-popup-liquid-glass:lower-in-stack,
+#lintelNotificationCenter .message.erhai-glass-light.bms-popup-liquid-glass.lintel-nc-collapsed-stack-front {
+    background-color: rgba(245, 248, 252, 0.24);
+    -erhai-background-color: rgba(245, 248, 252, 0.24);
+    color: rgba(12, 16, 22, 0.96);
+}
+
+.erhai-continuous.bms-popup-liquid-glass {
+    background-color: transparent !important;
+    background-gradient-direction: none !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+#lintelNotificationCenter.lintel-nc-dark .message.erhai-glass-light.bms-popup-liquid-glass StLabel,
+#lintelNotificationCenter.lintel-nc-light .message.erhai-glass-light.bms-popup-liquid-glass StLabel,
+#lintelNotificationCenter.lintel-nc-dark .message.erhai-glass-light.bms-popup-liquid-glass .message-body,
+#lintelNotificationCenter.lintel-nc-light .message.erhai-glass-light.bms-popup-liquid-glass .message-body,
+#lintelNotificationCenter.lintel-nc-dark .message.erhai-glass-light.bms-popup-liquid-glass .message-header .event-time,
+#lintelNotificationCenter.lintel-nc-light .message.erhai-glass-light.bms-popup-liquid-glass .message-header .event-time,
+#lintelNotificationCenter.lintel-nc-dark .message.erhai-glass-light.bms-popup-liquid-glass StIcon,
+#lintelNotificationCenter.lintel-nc-light .message.erhai-glass-light.bms-popup-liquid-glass StIcon {
+    color: rgba(12, 16, 22, 0.94);
+}
+
+#lintelNotificationCenter .lintel-nc-widget-card.erhai-glass-light.bms-popup-liquid-glass StLabel,
+#lintelNotificationCenter .lintel-nc-widget-card.erhai-glass-light.bms-popup-liquid-glass .lintel-nc-battery-device {
+    color: rgba(12, 16, 22, 0.94);
+    text-shadow: none;
+}
+
+#lintelNotificationCenter .lintel-nc-widget-card.erhai-glass-light.bms-popup-liquid-glass .lintel-nc-calendar-weekend {
+    color: rgba(12, 16, 22, 0.55);
+}
+
+#lintelNotificationCenter .lintel-nc-widget-card.erhai-glass-light.bms-popup-liquid-glass .lintel-nc-calendar-month {
+    color: #e0382e;
+}
+
+.lintel-system-menu-content.erhai-glass-light .popup-menu-item:insensitive,
+.lintel-system-menu-content.erhai-glass-light .popup-menu-item:insensitive StLabel,
+.lintel-system-menu-content.erhai-glass-light .popup-menu-item:insensitive StIcon {
+    color: rgba(12, 16, 22, 0.45);
+}

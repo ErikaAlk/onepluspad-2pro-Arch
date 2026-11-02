@@ -1,0 +1,7 @@
+{
+  "uuid": "erhai-motion@erhai.local",
+  "name": "洱海桌面动效",
+  "description": "系统弹性动画与菜单栏实时玻璃材质。",
+  "shell-version": ["51"],
+  "version": 1
+}

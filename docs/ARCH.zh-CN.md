@@ -53,6 +53,8 @@ bash arch/tools/build-sensors.sh /path/to/out/arch-sensors
 
 ## 安装边界
 
+可选桌面外观独立放在 [`arch/appearance/`](../arch/appearance/)，包含 Lintel、Glasslight 改版的固定来源、完整共享玻璃实现和原始参数配置。构建内核与设备支持包时不会安装外观组件。安装、启用与恢复原有设置的方法见 [外观说明](APPEARANCE.zh-CN.md)。
+
 本目录提供源码与构建入口，尚未验证适用于其他设备的全新 Arch 安装流程。不得直接使用上游 Ubuntu 刷写命令替换现有 Arch 根系统。
 
 Android 系统与用户数据必须保留。写启动分区前校验匹配固件的 Android 恢复镜像，保存当前 Linux 镜像与配置，并先用内存启动验证新内核。启动三件套必须作为一组校验，写入后逐字节读回，并进行冷启动验证。禁止更改活动槽、分区表或格式化现有分区。
