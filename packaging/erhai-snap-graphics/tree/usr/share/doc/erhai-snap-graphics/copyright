@@ -1,0 +1,12 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: erhai-snap-graphics
+Source: https://github.com/yzddmr6/onepluspad-2pro-mainline
+
+Files: *
+Copyright: 2026 yzddmr6
+License: GPL-2.0-only
+ This metapackage is distributed under version 2 of the GNU General Public
+ License. On Debian systems the complete text is available in
+ /usr/share/common-licenses/GPL-2.
+Comment: The separate piano-snap-graphics dependency retains its own licences
+ and source notices; this package contains none of that provider's payload.

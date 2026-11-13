@@ -1,0 +1,10 @@
+{
+  "gnome-settings-daemon-51.1/data/gnome-settings-daemon/gsd-enums.h": "d6de8ae527f578f2b690324191dee57df526e1750908e604f41b3db0724edff8",
+  "gnome-settings-daemon-51.1/data/org.gnome.settings-daemon.plugins.power.gschema.xml.in": "60d8172a81c5ce5b6c0dd52c13a32e917310828230e182a5e9a25d2e24b98d19",
+  "gnome-settings-daemon-51.1/plugins/media-keys/gsd-media-keys-manager.c": "f3896d6b574e311e92892f005b531517dc5a81ea9ee77efc896211e2494c1ba5",
+  "gnome-settings-daemon-51.1/plugins/power/gsd-power-manager.c": "e2a2865bf1fb0d2bbc4d10908633baa79e61b9489fb9126c0c7d5eb4cfc1a7e5",
+  "gnome-control-center-51.1/panels/power/cc-power-panel.c": "32f6a9eec177dca55acf8ecdc022a48dd9af885f2d76a4d39f2a0ddce4ec49e8",
+  "mutter-51.1/meson.build": "be66815a2c14e7a95f974d479d0eb3f78a69f997241b440cf097d5eb0ccaa2b7",
+  "mutter-51.1/src/x11/meta-x11-frame.c": "54ce9204ebb8c79d2d0ba478ac902d7b1ac8df5006ddd47fd2c35416b8e71654",
+  "mutter-51.1/src/backends/native/meta-renderer-native.c": "b34780bc3805a84ed7cfeb3252b8b7a73d5606bad9836c7b9a4dfe5175e5a2c1"
+}

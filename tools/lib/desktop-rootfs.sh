@@ -27,7 +27,8 @@ cleanup() {
     if [ "$proc_mounted" = 1 ]; then umount -R "$root/proc" || status=1; fi
     if [ "$mounted" = 1 ]; then umount "$root" || status=1; fi
     if [ "$status" = 0 ]; then
-        rm -rf /work/minimal /work/standard /work/changes /work/overlay-work "$root"
+        rm -rf /work/changes /work/overlay-work "$root"
+        if [ "${ERHAI_LAYER_CACHE:-0}" != 1 ]; then rm -rf /work/minimal /work/standard; fi
     fi
     exit "$status"
 }
@@ -36,8 +37,10 @@ trap cleanup EXIT
 # SYS_ADMIN is needed here for original trusted xattrs and the private overlay
 # mount. Target package scripts drop that added capability via target().
 dpkg -i /work/native/*.deb
-unsquashfs -no-progress -processors "$jobs" -d /work/minimal /layers/minimal.squashfs
-unsquashfs -no-progress -processors "$jobs" -d /work/standard /layers/minimal.standard.squashfs
+if [ "${ERHAI_LAYER_CACHE:-0}" != 1 ]; then
+    unsquashfs -no-progress -processors "$jobs" -d /work/minimal /layers/minimal.squashfs
+    unsquashfs -no-progress -processors "$jobs" -d /work/standard /layers/minimal.standard.squashfs
+fi
 mkdir -p "$root" /work/changes /work/overlay-work
 mount -t overlay overlay \
     -o lowerdir=/work/standard:/work/minimal,upperdir=/work/changes,workdir=/work/overlay-work "$root"
@@ -68,8 +71,23 @@ target apt-get "${apt_options[@]}" update
 # Mozilla's firefox, requested by exact version, replaces Ubuntu's
 # transitional firefox, whose version epoch sorts higher, so apt counts it as
 # a downgrade. Apt never selects a lower version that was not requested.
+# Purge packages replaced by conflicts, including power-profiles-daemon when
+# tuned-ppd takes over, so the image retains no removed-package configuration.
 target apt-get "${apt_options[@]}" --no-install-recommends --assume-yes \
-    --allow-downgrades install "$@"
+    --allow-downgrades --purge install "$@"
+# Device support has disabled flash-kernel before distribution kernel hooks run.
+# Share the exact package selector and assertion with installed-system upgrades.
+cp /work/remove-generic-kernels "$root/.erhai-build/remove-generic-kernels"
+target sh /.erhai-build/remove-generic-kernels --image
+if [ -d /work/release-repository ]; then
+    batch=$(cat /work/release-repository-id)
+    mkdir -p "$root/var/lib/erhai/releases/$batch"
+    cp -a /work/release-repository/. "$root/var/lib/erhai/releases/$batch/"
+    printf 'deb [trusted=yes] file:/var/lib/erhai/releases/%s ./\n' "$batch" > "$root/etc/apt/sources.list.d/erhai-release.list"
+    target apt-get -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/erhai-release.list \
+        -o Dir::Etc::sourceparts=/.erhai-build/sourceparts \
+        -o APT::Get::List-Cleanup=0 update
+fi
 cleanup_policy
 rm -rf "$build"
 # The ISO lists its own medium as a package source. An installed system has no
@@ -97,6 +115,7 @@ if [ -s "$root/etc/machine-id" ] && [ "$(cat "$root/etc/machine-id")" != uniniti
 fi
 
 # Runtime mounts must not become part of the filesystem or its manifests.
+test "$(stat -c '%u:%g:%a' "$root")" = 0:0:755
 umount -R "$root/proc"
 proc_mounted=0
 

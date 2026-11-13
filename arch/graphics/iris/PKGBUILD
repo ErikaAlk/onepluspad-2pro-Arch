@@ -1,0 +1,21 @@
+pkgname=libva-iris-erhai
+pkgver=0.4.0.r4125b119
+pkgrel=2
+pkgdesc='高通Iris视频编解码与VPP的VA-API驱动'
+arch=(aarch64)
+url=https://github.com/phxinyang/qualcomm-iris-vaapi
+license=(MIT LGPL-2.1-only)
+depends=(glibc libgcc libstdc++ libva libdrm mesa libglvnd)
+conflicts=(libva-v4l2 libva-v4l2-iris)
+options=(!strip !debug !lto)
+source=(erhai-graphics-26.2.6-1.3-aarch64.tar.zst)
+sha256sums=(4b27ca344f7ef1c65a57207c78377e0ff0d4c9ed0721a52332802cc5352a6b76)
+
+package() {
+  cp -a "$srcdir/iris-install/usr" "$pkgdir/"
+  ln -s v4l2_drv_video.so "$pkgdir/usr/lib/dri/msm_drv_video.so"
+  install -Dm644 "$srcdir/metadata/iris/COPYING.MIT" "$pkgdir/usr/share/licenses/$pkgname/COPYING.MIT"
+  install -Dm644 "$srcdir/metadata/iris/COPYING.LGPL" "$pkgdir/usr/share/licenses/$pkgname/COPYING.LGPL"
+  install -Dm644 "$srcdir/metadata/iris/source.json" "$pkgdir/usr/share/doc/$pkgname/source.json"
+  install -Dm644 "$srcdir/metadata/iris/"*.patch -t "$pkgdir/usr/share/doc/$pkgname/patches/"
+}

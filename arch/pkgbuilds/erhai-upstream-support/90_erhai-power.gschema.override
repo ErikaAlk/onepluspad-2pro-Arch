@@ -1,0 +1,5 @@
+[org.gnome.settings-daemon.plugins.power]
+power-button-action='lock'
+
+[org.gnome.desktop.screensaver]
+lock-enabled=true

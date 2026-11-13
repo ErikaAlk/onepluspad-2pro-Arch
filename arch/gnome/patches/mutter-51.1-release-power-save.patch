@@ -1,0 +1,27 @@
+--- a/src/backends/native/meta-renderer-native.c
++++ b/src/backends/native/meta-renderer-native.c
+@@ -1846,6 +1846,12 @@
+ {
+   MetaRendererNative *renderer_native = META_RENDERER_NATIVE (object);
+ 
++  /* 在销毁 Cogl 上下文之前释放息屏期间排队的帧缓冲。 */
++  g_clear_handle_id (&renderer_native->power_save_page_flip_source_id,
++                     mtk_source_remove);
++  g_clear_list (&renderer_native->power_save_page_flip_onscreens,
++                g_object_unref);
++
+   clear_detached_onscreens (renderer_native);
+ 
+   G_OBJECT_CLASS (meta_renderer_native_parent_class)->dispose (object);
+@@ -1856,11 +1862,6 @@
+ {
+   MetaRendererNative *renderer_native = META_RENDERER_NATIVE (object);
+ 
+-  g_clear_list (&renderer_native->power_save_page_flip_onscreens,
+-                g_object_unref);
+-  g_clear_handle_id (&renderer_native->power_save_page_flip_source_id,
+-                     mtk_source_remove);
+-
+   g_list_free (renderer_native->pending_mode_set_views);
+   g_hash_table_unref (renderer_native->mode_set_updates);
+ 

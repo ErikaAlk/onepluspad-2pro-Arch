@@ -1,0 +1,2 @@
+#!/bin/sh
+exec python /usr/lib/erhai/npu-demo.py "$@"

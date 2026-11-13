@@ -1,0 +1,31 @@
+pkgname=gnome-control-center
+pkgver=51.1
+pkgrel=1.1
+pkgdesc='GNOME 系统设置，支持平板电源按钮锁屏设置'
+arch=(aarch64)
+url=https://apps.gnome.org/Settings/
+license=(GPL-2.0-or-later)
+groups=(gnome)
+depends=(accountsservice bolt cairo colord-gtk4 cups-pk-helper dconf fontconfig gcr-4
+  gdk-pixbuf2 glib2 glibc gnome-bluetooth-3.0 gnome-color-manager gnome-desktop-4
+  gnome-online-accounts gnome-settings-daemon gnome-shell gnutls graphene
+  gsettings-desktop-schemas gsound gst-plugins-good gtk4 hicolor-icon-theme json-glib
+  krb5 libadwaita libcolord libcups libepoxy libgcc libgoa libgtop libgudev libibus
+  libmalcontent libmm-glib libnm libnma-gtk4 libpulse libpwquality libsecret libsoup3
+  libwacom libx11 libxi libxml2 pango polkit smbclient sound-theme-freedesktop tecla
+  udisks2 upower wayland gnome-keybindings)
+optdepends=('fwupd: 设备安全面板' 'gnome-remote-desktop: 屏幕共享'
+  'gnome-user-share: WebDAV 文件共享' 'malcontent: 应用权限控制'
+  'networkmanager: 网络设置' 'openssh: 远程登录' 'power-profiles-daemon: 电源配置'
+  'rygel: 媒体共享' 'system-config-printer: 打印机设置')
+options=(!strip !debug)
+source=(http://mirror.archlinuxarm.org/aarch64/extra/gnome-control-center-51.1-1-aarch64.pkg.tar.xz
+  gnome-51.1-power-fixes-aarch64.tar.xz)
+noextract=("${source[@]##*/}")
+sha256sums=(47ca146edf352361e9af26af10f6d85d406af388c18ab82b648c439548c190f0
+  36b7bbe549c7117b1062d52fbb12822e1cebec74ea4d8d15166ddd81e545ffce)
+
+package() {
+  bsdtar --no-same-owner -xf "$srcdir/gnome-control-center-51.1-1-aarch64.pkg.tar.xz" -C "$pkgdir" --exclude '.*'
+  bsdtar --no-same-owner -xf "$srcdir/gnome-51.1-power-fixes-aarch64.tar.xz" -C "$pkgdir" usr/bin/gnome-control-center
+}

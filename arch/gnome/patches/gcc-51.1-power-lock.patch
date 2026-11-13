@@ -1,0 +1,30 @@
+--- a/panels/power/cc-power-panel.c
++++ b/panels/power/cc-power-panel.c
+@@ -481,8 +481,6 @@
+ {
+     static const char *hidden_on_chassis[] = {
+         "vm",      /* Hard-coded to shutdown via logind (not interactive, as below!) */
+-        "tablet",  /* Should be left to the default action of suspending */
+-        "handset", /* This means phone. Similar to tablet */
+         NULL
+     };
+     static const struct {
+@@ -492,7 +490,8 @@
+     } actions[] = { { N_("Suspend"), GSD_POWER_BUTTON_ACTION_SUSPEND, offsetof (CcPowerPanel, can_suspend) },
+                       { N_("Power Off"), GSD_POWER_BUTTON_ACTION_INTERACTIVE, offsetof (CcPowerPanel, can_shutdown) },
+                         { N_("Hibernate"), GSD_POWER_BUTTON_ACTION_HIBERNATE, offsetof (CcPowerPanel, can_hibernate) },
+-                          { N_("Nothing"), GSD_POWER_BUTTON_ACTION_NOTHING, 0 } };
++                          { N_("Nothing"), GSD_POWER_BUTTON_ACTION_NOTHING, 0 },
++                          { N_("锁定屏幕"), GSD_POWER_BUTTON_ACTION_LOCK, 0 } };
+     guint n_options = 0;
+     guint i;
+ 
+@@ -503,7 +502,7 @@
+         const char *name = actions[i].name;
+         const int value = actions[i].value;
+ 
+-        if (value != GSD_POWER_BUTTON_ACTION_NOTHING) {
++        if (actions[i].availability != 0) {
+             const size_t offset = actions[i].availability;
+             ActionAvailability availability = G_STRUCT_MEMBER (ActionAvailability, self, offset);
+             if (availability < ACTION_INTERACTIVE)

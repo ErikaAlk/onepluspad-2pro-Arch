@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=GunyahVM desktop integration
+Exec=/usr/libexec/erhai/gunyahvm-favorite
+OnlyShowIn=GNOME;
+NoDisplay=true

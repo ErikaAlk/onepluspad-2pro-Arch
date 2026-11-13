@@ -30,10 +30,16 @@ The Xiaomi Pad 6 Pro Linux project provided build and recovery design references
 sensor-stack integration experience and patches:
 https://github.com/yzddmr6/xiaomipad-6pro-mainline
 
+The MIT-licensed TuneD profile layout, PPD service mount and zram policy
+structure are adapted from yzddmr6/xiaomipad-8pro-mainline, TuneD integration
+commit 0a7914dc8adaeab45db847343b924c446000295a. Board frequencies are defined
+separately for erhai; file-level MIT notices are preserved.
+https://github.com/yzddmr6/xiaomipad-8pro-mainline
+
 Graphics, audio and sensors
 --------------------------
 Mesa and its device-table patch retain upstream authorship and licenses;
-packaging/mesa/source.json identifies the inputs, and Mesa's docs/license.rst
+packaging/mesa/shared/mesa/source.json identifies the inputs, and Mesa's docs/license.rst
 and file notices apply. See docs/GRAPHICS.md for the integration boundary.
 Project source: https://gitlab.freedesktop.org/mesa/mesa
 
@@ -102,3 +108,76 @@ https://github.com/aunetx/blur-my-shell，figma-squircle 1.1.0 使用 MIT，构�
 MacTahoe 主题、图标和 Dock 的来源与许可在各 PKGBUILD 中记录。Apple 图标资源
 在用户构建时从官方地址获取并核验，OPPO 字体由用户另行获取；这些资源的原件
 没有放入本仓库，项目代码许可证不改变其权利归属。
+
+Project release notifications
+-----------------------------
+packaging/release-notifier/ and tools/test-release-notifier.py are imported from
+https://github.com/yzddmr6/xiaomipad-8pro-mainline
+commit a9ad827fffe677b5aa6eefb88b3c5965af83a49a (MIT, Copyright 2026 yzddmr6).
+The runtime and tests are unmodified; only usr/share/mainline-release-notifier/project.json
+selects this repository and product name. The Xiaomi repository is the canonical
+implementation. The MIT text is preserved in packaging/erhai-release-notifier/copyright.
+The separate erhai-release-notifier package and release-version build input are
+local packaging integration.
+
+Desktop feature reuse
+---------------------
+Resources: Ubuntu 1.10.2-0ubuntu3.1 with the five generic patches and backport
+from yzddmr6/xiaomipad-8pro-mainline, commit 80010271a747207751a8d11cf1553abb204c685d.
+The application and patches retain GPL-3.0-or-later and their original authors.
+The authoritative source recipe is referenced by packaging/resources/source.json.
+Waydroid installation documentation and the UPower CHARGE_LIMIT integration
+follow yzddmr6/xiaomipad-8pro-mainline v1.1.1 (MIT); hardware matching is local.
+
+GunyahVM favorite migration
+---------------------------
+The favorite helper, GSettings migration key and autostart entry originate in
+https://github.com/yzddmr6/xiaomipad-8pro-mainline
+commits 6f377053a29fcc5688fe10bd84ab55f111a1013e and
+71342ec3392264261e4cdca0f71c83ebe44d336e (MIT, Copyright 2026 yzddmr6).
+The append-once algorithm is retained. Device integration changes the schema
+and installed path to erhai, declares the Python introspection dependencies,
+and omits the legacy autostart phase so the systemd XDG generator can launch it.
+The MIT license is shipped as gunyahvm-favorite.COPYING in the support package.
+
+Snap prompting capability condition
+-----------------------------------
+The user-service condition is reused from
+https://github.com/yzddmr6/xiaomipad-6pro-mainline
+commit 0124be288244f9018b8ee10617df3d0a5bf5f789. Only the device-specific
+drop-in filename changes. The daemon is skipped when the kernel does not
+provide the AppArmor notification socket.
+
+Host Mesa packages and release transactions
+------------------------------------------
+The common Ubuntu Mesa packaging lock, build and transaction tools are imported
+from yzddmr6/xiaomipad-8pro-mainline, commit a1d1cf180487ec425c471cca7ea6f2b92958d724.
+File hashes and original licenses are retained in packaging/mesa/provenance.json
+and the imported source files. The OnePlus transition and image integration are
+maintained here; the common implementation is maintained in the source repository.
+
+NPU runtime (packaging/npu, tools/build-npu.py): Qualcomm FastRPC from
+https://github.com/qualcomm/fastrpc (BSD-3-Clause, see upstream LICENSE.txt);
+llama.cpp from https://github.com/ggml-org/llama.cpp (MIT); one build-only CMake patch removes compiler/linker command notes before SWIV generation. Fixed revisions and archive identities are in packaging/npu/sources.json.
+The local hybrid demo and packaging are MIT. Hexagon SDK is a build-time input
+from snapdragon-toolchain/hexagon-sdk; it is not included in runtime packages.
+Qwen3-0.6B weights are Apache-2.0 (Qwen team), converted to GGUF by Unsloth.
+Stock DSP shells and libraries are included under firmware/npu with source identities.
+They are Qualcomm/vendor property; no redistribution permission has been obtained,
+and they will be removed upon request from the rights holder.
+
+Mesa ir3 helper ordering prerequisite: Job Noorman, upstream 87afb02bc7e54e6b47da4339a7b805e77751c9b7, MIT; imported without modification in packaging/mesa/shared/mesa/ir3-float-helper-order.patch.
+
+Arch 配套组件
+-------------
+arch/gnome/ 将 packaging/shared-gnome/ 中的通用修复移植至 GNOME 51.1，
+保留 Mutter、GNOME Settings Daemon 和 GNOME Control Center 的原作者与许可证；
+各组件源码、补丁和发行版输入由该目录的来源记录固定。
+
+arch/graphics/ 使用固定的 Mesa 与 Qualcomm Iris 源码和补丁，保留各文件许可。
+arch/pkgbuilds/erhai-upstream-runtime 从固定 AudioReach 源码构建拓扑，并安装
+BSD-3-Clause 许可证。GunyahVM、Casilda 及私有运行依赖保留原包版权材料，
+其来源与校验值分别保存在 packaging/gunyahvm/source.json 和 Arch PKGBUILD。
+
+arch/kernel-custom.bundle 保存 Arch 定制内核提交与原作者信息，内核文件的
+SPDX 许可继续适用；其中 ASoC 组件计数修复与 CAMSS、UFCS 修改均保留在 Git 历史。

@@ -1,0 +1,13 @@
+post_install() {
+  systemctl --global enable mainline-release-notifier.timer
+  systemctl daemon-reload
+  printf '%s\n' '内置扬声器采用原厂功放电平，缺少原厂 DSP 扬声器保护。可使用 erhai-audio-speaker disable 持久关闭。'
+}
+
+post_upgrade() {
+  post_install
+}
+
+pre_remove() {
+  systemctl --global disable mainline-release-notifier.timer
+}

@@ -1,0 +1,25 @@
+post_install() {
+  glib-compile-schemas /usr/share/glib-2.0/schemas
+  systemctl daemon-reload
+  printf '%s\n' '请在新内核启动后启用 tuned.service、tuned-ppd.service、chronyd.service 和 erhai-cover.service。'
+}
+
+post_upgrade() {
+  systemctl stop 'erhai-power-key@*.service'
+  post_install
+}
+
+pre_remove() {
+  python /usr/lib/erhai/cleanup-tuned.py
+  systemctl stop erhai-cover.service
+  systemctl disable erhai-cover.service
+}
+
+post_remove() {
+  glib-compile-schemas /usr/share/glib-2.0/schemas
+  systemctl daemon-reload
+  systemctl try-restart tuned.service
+  if systemctl is-enabled --quiet tuned-ppd.service; then
+    systemctl restart tuned-ppd.service
+  fi
+}

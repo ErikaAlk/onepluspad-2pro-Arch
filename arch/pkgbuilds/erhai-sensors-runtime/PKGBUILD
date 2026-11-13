@@ -1,6 +1,6 @@
 pkgname=erhai-sensors-runtime
-pkgver=0.4.0
-pkgrel=1
+pkgver=0.7.2
+pkgrel=2
 pkgdesc='一加平板 2 Pro SSC 传感器原生程序、配置与服务'
 arch=(aarch64)
 url=https://github.com/ErikaAlk/onepluspad-2pro-Arch
@@ -8,20 +8,24 @@ license=(GPL-3.0-or-later)
 depends=(glibc glib2 libqmi libqrtr-glib protobuf-c libgudev polkit iio-sensor-proxy systemd python)
 makedepends=(dpkg)
 options=(!strip !debug)
-source=(erhai-sensors_0.4.0+b6762acb2_arm64.deb erhai-arch-v0.6.0.tar.gz)
-noextract=(erhai-sensors_0.4.0+b6762acb2_arm64.deb)
+install=erhai-sensors-runtime.install
+source=(erhai-sensors_0.7.2+bdf36caaa_arm64.deb erhai-arch-v0.9.1.tar.gz)
+noextract=(erhai-sensors_0.7.2+bdf36caaa_arm64.deb)
 sha256sums=(
-  4c10ec6ba5670d1d9fb6a036c727c761d621911aaf84d61c1283b9f223900910
-  110e2e7f160a595fed0963287e2ce2887e9896a35f84dbabdf076917407ee945
+  daec2339a3fc1e19510f6ee9a590dbe5b804c83afc28b3b543ec50bff531a302
+  68a85a7104f306d4d6234e9f2eb3ef0ec41ee105b9bd5f928e25008a92e2c2b0
 )
 
 prepare() {
-  dpkg-deb -x "$srcdir/erhai-sensors_0.4.0+b6762acb2_arm64.deb" "$srcdir/payload"
+  dpkg-deb -x "$srcdir/erhai-sensors_0.7.2+bdf36caaa_arm64.deb" "$srcdir/payload"
 }
 
 package() {
-  local upstream=onepluspad-2pro-mainline-0.6.0/packaging/erhai-sensors
+  local upstream=onepluspad-2pro-mainline-0.9.1/packaging/erhai-sensors
   cp -a "$upstream/tree/." "$pkgdir/"
+  install -d "$pkgdir/usr/bin"
+  mv "$pkgdir/usr/sbin/"* "$pkgdir/usr/bin/"
+  rmdir "$pkgdir/usr/sbin"
   install -d "$pkgdir/usr/lib/erhai" "$pkgdir/usr/share/erhai-sensors" "$pkgdir/usr/share/doc"
   cp -a payload/usr/lib/erhai/sensors "$pkgdir/usr/lib/erhai/"
   cp -a payload/usr/share/erhai-sensors/hexagonrpcd "$pkgdir/usr/share/erhai-sensors/"

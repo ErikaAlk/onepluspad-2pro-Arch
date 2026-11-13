@@ -1,0 +1,17 @@
+[binaries]
+c = 'aarch64-linux-android33-clang'
+cpp = 'aarch64-linux-android33-clang++'
+ar = 'llvm-ar'
+strip = 'llvm-strip'
+pkg-config = ['pkg-config', '--define-prefix']
+c_ld = 'lld'
+cpp_ld = 'lld'
+
+[properties]
+needs_exe_wrapper = true
+
+[host_machine]
+system = 'android'
+cpu_family = 'aarch64'
+cpu = 'armv8'
+endian = 'little'

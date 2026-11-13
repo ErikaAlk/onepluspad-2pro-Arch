@@ -84,6 +84,7 @@ build, never contents of a package.
 import argparse
 from contextlib import ExitStack
 import hashlib
+import gzip
 import json
 import os
 import re
@@ -116,9 +117,10 @@ VERSION_FILE = PACKAGING / 'VERSION'
 MAINTAINER = 'yzddmr6 <46088090+yzddmr6@users.noreply.github.com>'
 DEBIAN_SCRIPTS = ('preinst', 'postinst', 'prerm', 'postrm')
 PACKAGES = ('erhai-display-power', 'erhai-device-support', 'erhai-firmware', 'erhai-audio',
-            'erhai-firefox', 'erhai-settings', 'erhai-kernel', 'erhai-debug', 'erhai-device')
+            'erhai-firefox', 'erhai-release-notifier', 'erhai-settings', 'erhai-kernel', 'erhai-debug', 'erhai-device',
+            'erhai-snap-graphics', 'erhai-apps')
 PARTS = ('boot', 'init_boot', 'vendor_boot')
-SWITCHER_PROGRAMS = ('erhai-switch', 'erhai-switch-install-ubuntu-images')
+SWITCHER_PROGRAMS = ('switch-common.sh', 'erhai-switch', 'erhai-switch-install-ubuntu-images')
 
 
 def die(message):
@@ -475,11 +477,11 @@ def stage_display_power(root):
          str(PACKAGING / 'erhai-display-power/gsd-backlight-compat.c')])
 
 
-def stage_firmware(root, manifest):
+def stage_firmware(root, manifest, firmware_tree=None):
     """Copy the closure out of the tree, verifying every file on the way in."""
     base = root / 'usr/lib/firmware'
     for spec in manifest['files']:
-        source = FIRMWARE / spec['install']
+        source = (firmware_tree or FIRMWARE) / spec['install']
         if not source.is_file():
             die(f'firmware {spec["install"]} is not in '
                 f'{FIRMWARE.relative_to(REPO)}; --refresh-from-rom '
@@ -740,27 +742,9 @@ def describe_chmixer(params):
     return names
 
 
-def stage_settings(root, build):
-    """Accept only the ARM64 program built from the current locked inputs."""
-    inputs = PACKAGING / 'gnome-control-center'
-    lock = json.loads((inputs / 'source.json').read_text())
-    info_path = build / 'build-info.json'
-    binary = build / 'gnome-control-center'
-    if not info_path.is_file() or not binary.is_file() or binary.is_symlink():
-        die('build GNOME Settings with tools/build-settings.py first; use --settings-build')
-    info = json.loads(info_path.read_text())
-    if info['source'] != lock or info['build_root'] != json.loads((inputs / 'build-root.json').read_text()):
-        die('Settings build uses different source or build-root inputs')
-    for patch in lock['patches']:
-        if sha256_file(REPO / patch['path']) != patch['sha256']:
-            die('Settings patch differs from source.json: ' + patch['path'])
-    if sha256_file(binary) != info['binary_sha256']:
-        die('Settings binary identity mismatch')
-    with binary.open('rb') as stream:
-        header = stream.read(20)
-    if header[:6] != b'\x7fELF\x02\x01' or header[18:20] != b'\xb7\x00':
-        die('Settings binary is not an AArch64 ELF executable')
-    install_file(binary, root / 'usr/bin/gnome-control-center', 0o755)
+def stage_settings(root):
+    """Brand the shared packages without replacing any distribution binary."""
+    copy_tree(PACKAGING / 'erhai-settings' / 'tree', root)
 
 
 def stage_audio(root, archive):
@@ -862,11 +846,17 @@ def build_triplet(args, work):
 
 
 def stage_kernel(root, args, work, release):
+    # The payload advertises erhai-kernel-zram so device policy can depend on
+    # installed modules without activating the kernel selector before RAM boot.
+    config = (Path(args.kernel_out) / '.config').read_text().splitlines()
+    if not ({'CONFIG_SWAP=y', 'CONFIG_ZRAM_BACKEND_ZSTD=y'} <= set(config)
+            and any(f'CONFIG_ZRAM={mode}' in config for mode in ('y', 'm'))):
+        die('erhai-kernel-zram requires CONFIG_SWAP, CONFIG_ZRAM and its zstd backend')
     if args.triplet_signed:
         die('versioned module payloads require a fresh source-bound triplet')
     modules_stage = work / 'modules'
     run([sys.executable, REPO / 'tools/stage-kernel-modules.py',
-         '--kernel-source', WS / 'kernel/linux', '--kernel-out', args.kernel_out,
+         '--kernel-source', Path(os.environ.get('KERNEL_SOURCE', WS / 'kernel/linux')), '--kernel-out', args.kernel_out,
          '--output', modules_stage])
     module_meta = json.loads((modules_stage / 'modules-manifest.json').read_text())
     if module_meta['kernel_release'] != release:
@@ -955,7 +945,7 @@ def metadata_digest(package, substitutions):
     together with every substitution that is not the version itself.
     """
     digest = hashlib.sha256()
-    for name in ('control', *DEBIAN_SCRIPTS):
+    for name in ('control', 'changelog', *DEBIAN_SCRIPTS):
         source = PACKAGING / package_template(package) / name
         if source.is_file():
             digest.update(f'{name} {sha256_file(source)}\n'.encode())
@@ -994,6 +984,12 @@ def installed_size_kib(root):
 def write_control(root, package, version, substitutions):
     debian = root / 'DEBIAN'
     debian.mkdir(parents=True, exist_ok=True)
+    changelog = PACKAGING / package_template(package) / 'changelog'
+    if changelog.is_file():
+        text = changelog.read_text().replace('@VERSION@', version).replace('@MAINTAINER@', MAINTAINER)
+        docs = root / 'usr/share/doc' / package
+        docs.mkdir(parents=True, exist_ok=True)
+        (docs / 'changelog.gz').write_bytes(gzip.compress(text.encode(), mtime=0))
     text = (PACKAGING / package_template(package) / 'control').read_text()
     values = {'@VERSION@': version,
               '@INSTALLED_SIZE@': str(installed_size_kib(root)), **substitutions}
@@ -1041,13 +1037,17 @@ def source_date_epoch(kernel_out=None):
     dpkg-deb clamps every mtime newer than SOURCE_DATE_EPOCH to it, and the
     staged files are all newer, so the whole archive lands on one timestamp.
     Kernel sets use the kernel commit; component-only builds use this
-    integration repository. An exported tree can supply SOURCE_DATE_EPOCH.
+    release-counter commit, so documentation-only commits do not change the
+    bytes of an otherwise identical component. An exported tree can supply
+    SOURCE_DATE_EPOCH.
     """
     if 'SOURCE_DATE_EPOCH' in os.environ:
         return os.environ['SOURCE_DATE_EPOCH']
-    git = WS / 'kernel/linux' if kernel_out is not None else REPO
+    git = Path(os.environ.get('KERNEL_SOURCE', WS / 'kernel/linux')) if kernel_out is not None else REPO
     if (git / '.git').exists():
-        result = subprocess.run(['git', '-C', str(git), 'show', '-s', '--format=%ct', 'HEAD'],
+        revision = ['show', '-s', '--format=%ct', 'HEAD'] if kernel_out is not None else [
+            'log', '-1', '--format=%ct', '--', 'packaging/VERSION']
+        result = subprocess.run(['git', '-C', str(git), *revision],
                                 capture_output=True, text=True)
         if result.returncode == 0 and result.stdout.strip().isdigit():
             return result.stdout.strip()
@@ -1067,6 +1067,9 @@ def pack(root, package, version, architecture, out_dir, epoch):
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--firmware-tree', type=Path, help='Owner-supplied firmware tree; all bytes are verified against the manifest')
+    parser.add_argument('--release-version',
+                        help='Project release (without v), required when building device support')
     parser.add_argument('--output', type=Path, default=WS / 'out/erhai-debs')
     parser.add_argument('--kernel-out', type=Path, default=WS / 'out/kernel-firstboot')
     parser.add_argument('--dtb', type=Path, default=WS / 'out/abl-dtb/erhai-abl.dtb',
@@ -1084,8 +1087,6 @@ def main():
     parser.add_argument('--debug', action='store_true',
                         help='Enable the debug channel in the packaged kernel command '
                              'line and mark the version ~dbg')
-    parser.add_argument('--settings-build', type=Path, default=WS / 'out/gnome-control-center',
-                        help='Output of tools/build-settings.py, including build-info.json')
     parser.add_argument('--audio-source', type=Path,
                         help='Pinned audioreach-topology source archive (defaults to the cache)')
     parser.add_argument('--refresh-from-rom', action='store_true',
@@ -1109,6 +1110,11 @@ def main():
         die('dpkg-deb is required')
     wanted = tuple(args.only) if args.only else tuple(
         package for package in PACKAGES if args.debug or package != 'erhai-debug')
+
+    if 'erhai-device-support' in wanted:
+        if not args.release_version or not re.fullmatch(r'[0-9][0-9A-Za-z.+~\-]*', args.release_version):
+            parser.error('--release-version is required for erhai-device-support')
+        run(['dpkg', '--validate-version', args.release_version])
 
     release_file = Path(args.kernel_out) / 'include/config/kernel.release'
     release = None
@@ -1137,14 +1143,21 @@ def main():
             root.mkdir(parents=True)
             if package == 'erhai-device-support':
                 stage_device_support(root)
+                release_file = root / 'usr/share/mainline-release/version'
+                release_file.parent.mkdir(parents=True, exist_ok=True)
+                release_file.write_text(args.release_version + '\n')
+            elif package == 'erhai-release-notifier':
+                copy_tree(PACKAGING / 'release-notifier', root)
+                install_file(PACKAGING / package / 'copyright',
+                             root / 'usr/share/doc' / package / 'copyright', 0o644)
             elif package == 'erhai-display-power':
                 stage_display_power(root)
-            elif package in ('erhai-debug', 'erhai-firefox'):
+            elif package in ('erhai-debug', 'erhai-firefox', 'erhai-snap-graphics', 'erhai-apps'):
                 copy_tree(PACKAGING / package / 'tree', root)
             elif package == 'erhai-firmware':
-                stage_firmware(root, manifest)
+                stage_firmware(root, manifest, args.firmware_tree)
             elif package == 'erhai-settings':
-                stage_settings(root, args.settings_build)
+                stage_settings(root)
             elif package == 'erhai-audio':
                 stage_audio(root, args.audio_source)
             elif package == 'erhai-kernel':
@@ -1179,13 +1192,14 @@ def main():
         epoch = source_date_epoch(args.kernel_out if kernel_meta else None)
         built = []
         for package in roots:
-            architecture = 'arm64' if package in ('erhai-kernel', 'erhai-device', 'erhai-display-power', 'erhai-settings', image_package) else 'all'
+            architecture = 'arm64' if package in ('erhai-kernel', 'erhai-device', 'erhai-display-power', 'erhai-settings', 'erhai-snap-graphics', image_package) else 'all'
             write_control(roots[package], package, version, substitutions)
             built.append(pack(roots[package], package, version, architecture, out_dir, epoch))
 
         summary = {
             'version': version,
             'release': release_counter,
+            'project_release': args.release_version,
             'build_id': build_id,
             'source_date_epoch': epoch,
             'built': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),

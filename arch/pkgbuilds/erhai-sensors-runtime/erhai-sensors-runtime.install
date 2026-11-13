@@ -1,0 +1,26 @@
+post_install() {
+  systemd-sysusers erhai-sensors.conf
+  systemd-tmpfiles --create erhai-sensors.conf
+  systemctl daemon-reload
+  systemctl enable erhai-sensors-sleep.service
+  udevadm control --reload
+}
+
+post_upgrade() {
+  systemd-sysusers erhai-sensors.conf
+  systemd-tmpfiles --create erhai-sensors.conf
+  systemctl daemon-reload
+  udevadm control --reload
+}
+
+pre_remove() {
+  systemctl stop iio-sensor-proxy.service erhai-sensors-gate.service erhai-sensors-rpcd.service
+  systemctl stop erhai-sensors-sleep.service
+  systemctl disable erhai-sensors-sleep.service
+}
+
+post_remove() {
+  rm -rf -- /run/erhai-sensors-ssc
+  systemctl daemon-reload
+  udevadm control --reload
+}

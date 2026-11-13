@@ -1,6 +1,6 @@
 # Arch Linux ARM
 
-本仓库维护一加平板 2 Pro（OPD2413 / SM8750P）的 Arch Linux ARM 定制，基于上游 v0.6.0，使用 GNOME Wayland，并保留 Waydroid 和 Android 双系统。
+本仓库维护一加平板 2 Pro（OPD2413 / SM8750P）的 Arch Linux ARM 定制，基于上游 v0.9.1，使用 GNOME Wayland，并保留 Waydroid 和 Android 双系统。当前组件和验证范围见[上游更新说明](ARCH-UPSTREAM-v0.9.1.zh-CN.md)。
 
 ## 源码
 
@@ -8,24 +8,18 @@
 
 | 内容 | 固定版本 |
 |---|---|
-| 上游内核 | `erhai-v0.6.0` / `70b572544d504735e2924f6c3f5fe3bd726ef275` |
-| 定制内核 | `febfe4f53d2b83c0d115bd0972abdee1760154f7`，`7.2.14-erhai-arch-v06+` |
-| Arch 配套源码 | `f9605bcc8f83d16293657cdca15b329e387baa53`，由保留分支 `feat/arch-v0.6` 提供 |
-| Arch 支持包 | `erhai-upstream-support 0.6.0-1` |
+| 上游内核 | `v0.9.1` / `29eda7337ed1af7316ea93ea73465b10f8ebeaff` |
+| 定制内核 | `e1d6b7c2f8482b707d2117781481d7827e40554d`，`7.4.0-rc2-erhai-arch-v091+` |
+| Arch 配套源码 | `25325453637b1f9f4c128d969269a5a132111f78` |
+| Arch 支持包 | `erhai-upstream-support 0.9.1-1` |
 
 `arch/kernel-custom.bundle` 保存定制内核的原始 Git 提交和合并关系，需与上游基线历史共同使用。它包含 UFCS 受电端与 SC8547A PHY、USBSS 充电路径、CCI/DMA 安全修复、gen4 帧尾填充以及限定 KUnit 测试。Waydroid、网络、Landlock 和 PSI 配置包含在已验证的完整内核配置中；单独配置片段也一并保留。
 
-Arch 配套包包含前后摄软件 ISP 调校、电源键锁屏后休眠、合盖、SoCCP 和 chrony。休眠标志使用专用 RuntimeDirectory。校时优先使用 NTS，NetworkManager dispatcher 使用 chrony 自带的 DHCP 脚本接收网络提供的 NTP 来源。
+Arch 配套包包含相机调校、GNOME锁屏电源键、插电与合盖策略、TuneD、zram、SoCCP和chrony。校时优先使用NTS，NetworkManager dispatcher使用chrony提供的DHCP脚本。CDSP、音频、更新通知与双系统工具由独立运行组件包管理。
 
 ## 构建
 
 使用 Linux 文件系统中的工作目录，准备 Git、Python、base-devel、AArch64 交叉编译器、ccache、QEMU AArch64 和内核构建依赖。所有中间产物放在指定输出目录。
-
-保留包源码分支，以便生成固定源码归档：
-
-```sh
-git fetch origin feat/arch-v0.6
-```
 
 准备内核、构建 Image/DTB/模块、运行限定相机缓冲区测试和构建 Arch 配套包。每条命令独立执行，目录参数请使用绝对路径：
 
@@ -34,14 +28,15 @@ bash arch/tools/prepare-kernel.sh /path/to/kernel-erhai-arch
 bash arch/tools/build-kernel.sh /path/to/kernel-erhai-arch /path/to/out/kernel-erhai-arch
 bash arch/tools/test-camss.sh /path/to/kernel-erhai-arch /path/to/out/camss-kunit
 bash arch/tools/build-support.sh /path/to/out/arch-support
+bash arch/tools/build-runtime.sh /path/to/out/arch-runtime
 bash arch/tools/build-sensors.sh /path/to/out/arch-sensors
 ```
 
 构建使用完整且带哈希的配置，独立于既有 v0.5 工作区。配套包是 `any` 架构的脚本、配置与固件包，可在主机上构建。依赖是否安装由目标 Arch 系统核验；在其他发行版构建时使用 Arch 构建环境。
 
-传感器入口调用现有生产构建工具，从 `packaging/sensors/sources.json` 固定的源码、补丁、Ubuntu Base 和 APT snapshot 构建真实 AArch64 程序，再封装为 Arch 包；需要 qemu-user binfmt 和用户命名空间。它不要求预先持有本机缓存的 DEB。固定重建产物为 `erhai-sensors_0.4.0+b6762acb2_arm64.deb`，SHA256 `4c10ec6ba5670d1d9fb6a036c727c761d621911aaf84d61c1283b9f223900910`；三个程序、两个私有库与本机已验证的原生程序逐字节一致。设备自己的 registry 与 socinfo 由导入工具保存到设备，不能放进软件包或公开仓库。
+传感器入口从 `packaging/sensors/sources.json` 固定的源码、补丁、Ubuntu Base和APT快照构建真实AArch64程序，再封装为Arch包；需要qemu-user binfmt和用户命名空间。固定重建产物为 `erhai-sensors_0.7.2+bdf36caaa_arm64.deb`，SHA256为 `daec2339a3fc1e19510f6ee9a590dbe5b804c83afc28b3b543ec50bff531a302`。设备自己的registry与socinfo由导入工具保存在设备，不能放入软件包或公开仓库。
 
-## 已验证范围
+## v0.6 真机记录
 
 2026-11-02：定制内核 Image、DTB、模块构建通过；限定 QEMU/KUnit 测试直接调用生产格式计算与 DMA 检查函数，覆盖前后摄采样模式、前摄完整模式、行宽边界、容量不足和地址要求。Arch 支持包隔离安装后内容检查为 46 个文件、0 项变化；服务、schema、chrony 配置和真实 systemd 沙箱的标志消费检查通过。
 

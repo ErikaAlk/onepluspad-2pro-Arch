@@ -1,24 +1,23 @@
 {
   "kernel": {
     "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
-    "baseline_tag": "erhai-v0.6.0",
-    "baseline_commit": "70b572544d504735e2924f6c3f5fe3bd726ef275",
-    "custom_commit": "febfe4f53d2b83c0d115bd0972abdee1760154f7",
+    "baseline_tag": "v0.9.1",
+    "baseline_commit": "29eda7337ed1af7316ea93ea73465b10f8ebeaff",
+    "custom_commit": "2fcc524a06da1bcd8d5937dd48fa7660d14e9155",
     "bundle": "kernel-custom.bundle",
-    "bundle_sha256": "02fe8562bb648c4bd0cd6ddf6f2aebc03b19c83efe8368048cfedf4bccefdf83",
-    "bundle_ref": "refs/heads/feat/upstream-v0.6",
+    "bundle_sha256": "31ca55b1ac6cac4f3312bb81f7f6e14384f53f0b98b74363eea50edd67a69a98",
+    "bundle_ref": "refs/heads/feat/arch-v091",
     "config": "config/kernel.config",
-    "config_sha256": "029b5e1e11e5c5ad4af26b98e14beddbf42d6c9a1fa22951a985bd892fe69dcf"
+    "config_sha256": "ac5d2e7576fde23711844b64115dfe9b778faecfa49758f313917661aff47da2"
   },
   "sensors": {
     "source_lock": "packaging/sensors/sources.json",
-    "rebuilt_deb": "erhai-sensors_0.4.0+b6762acb2_arm64.deb",
-    "rebuilt_deb_sha256": "4c10ec6ba5670d1d9fb6a036c727c761d621911aaf84d61c1283b9f223900910",
-    "arch_package": "erhai-sensors-runtime 0.4.0-1"
+    "rebuilt_deb": "erhai-sensors_0.7.2+bdf36caaa_arm64.deb",
+    "rebuilt_deb_sha256": "daec2339a3fc1e19510f6ee9a590dbe5b804c83afc28b3b543ec50bff531a302",
+    "arch_package": "erhai-sensors-runtime 0.7.2-2"
   },
   "support_package": {
-    "integration_commit": "f9605bcc8f83d16293657cdca15b329e387baa53",
-    "retained_branch": "feat/arch-v0.6",
-    "source_archive_sha256": "110e2e7f160a595fed0963287e2ce2887e9896a35f84dbabdf076917407ee945"
+    "integration_commit": "25325453637b1f9f4c128d969269a5a132111f78",
+    "source_archive_sha256": "68a85a7104f306d4d6234e9f2eb3ef0ec41ee105b9bd5f928e25008a92e2c2b0"
   }
 }

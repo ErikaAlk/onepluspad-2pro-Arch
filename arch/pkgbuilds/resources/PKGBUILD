@@ -1,0 +1,21 @@
+pkgname=resources
+pkgver=1.10.2
+pkgrel=1.1
+pkgdesc='系统资源监视器与设备图形遥测'
+arch=(aarch64)
+url=https://github.com/nokyan/resources
+license=(GPL-3.0-or-later)
+depends=(libadwaita glibc cairo gcc-libs glib2 graphene gtk4 libsoup3 dconf)
+makedepends=(dpkg)
+options=(!strip !debug)
+source=(resources_1.10.2-0ubuntu3.1+piano2_arm64.deb)
+noextract=("${source[@]}")
+sha256sums=(4a160730e341fbc84dffcf0e1a81016e8036cb78bef5e7b0dbd9b832fcea46eb)
+
+prepare() {
+  dpkg-deb -x "${source[0]}" payload
+}
+
+package() {
+  cp -a payload/usr "$pkgdir/"
+}
