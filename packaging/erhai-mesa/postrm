@@ -1,6 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-2.0-only
 set -e
+
 case "$1" in
 remove | disappear | abort-install)
     for ICD in /usr/share/vulkan/icd.d/freedreno_icd.json \
@@ -9,5 +10,10 @@ remove | disappear | abort-install)
             dpkg-divert --package erhai-mesa --remove --rename --divert "$ICD.distrib" "$ICD"
         fi
     done
+    ;;
+esac
+case "$1" in
+remove | purge | disappear | abort-install)
+    ldconfig
     ;;
 esac

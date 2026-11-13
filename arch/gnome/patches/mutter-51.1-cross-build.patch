@@ -1,0 +1,24 @@
+--- a/meson.build
++++ b/meson.build
+@@ -440,7 +440,7 @@
+   )
+ 
+   if libsysprof_capture_dep.type_name() == 'pkgconfig'
+-    sysprof_dep = dependency('sysprof-6', 'sysprof-4')
++    sysprof_dep = dependency('sysprof-6', 'sysprof-4', native: true)
+     sysprof_dbus_interfaces_dir = sysprof_dep.get_variable('datadir') / 'dbus-1' / 'interfaces'
+   else
+     sysprof_dbus_interfaces_dir = mutter_srcdir / 'subprojects' / 'sysprof' / 'src'
+@@ -566,6 +566,12 @@
+ 
+ if have_xwayland
+   xkb_base = xkeyboard_config_dep.get_variable('xkb_base')
++  if meson.is_cross_build()
++    cross_sysroot = meson.get_external_property('sys_root', '')
++    if cross_sysroot != '' and xkb_base.startswith(cross_sysroot + '/')
++      xkb_base = xkb_base.replace(cross_sysroot, '')
++    endif
++  endif
+   cdata.set_quoted('XKB_BASE', xkb_base)
+ endif
+ 

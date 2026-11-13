@@ -1,0 +1,129 @@
+--- a/data/gnome-settings-daemon/gsd-enums.h
++++ b/data/gnome-settings-daemon/gsd-enums.h
+@@ -107,7 +107,8 @@
+   GSD_POWER_BUTTON_ACTION_NOTHING,
+   GSD_POWER_BUTTON_ACTION_SUSPEND,
+   GSD_POWER_BUTTON_ACTION_HIBERNATE,
+-  GSD_POWER_BUTTON_ACTION_INTERACTIVE
++  GSD_POWER_BUTTON_ACTION_INTERACTIVE,
++  GSD_POWER_BUTTON_ACTION_LOCK
+ } GsdPowerButtonActionType;
+ 
+ typedef enum
+--- a/data/org.gnome.settings-daemon.plugins.power.gschema.xml.in
++++ b/data/org.gnome.settings-daemon.plugins.power.gschema.xml.in
+@@ -39,7 +39,7 @@
+     <key name="power-button-action" enum="org.gnome.settings-daemon.GsdPowerButtonActionType">
+       <default>'suspend'</default>
+       <summary>Power button action</summary>
+-      <description>The action to take when the system power button is pressed. Virtual machines only honor the 'nothing' action, and will shutdown otherwise. Tablets always suspend, ignoring all the other action options.</description>
++      <description>按下电源按钮时执行的操作。虚拟机只遵循 nothing 操作，其他配置均执行关机。lock 操作锁定并激活屏幕保护程序，保持系统运行；锁定屏幕上的输入可唤醒显示器。</description>
+     </key>
+     <key name="power-saver-profile-on-low-battery" type="b">
+       <default>true</default>
+--- a/plugins/media-keys/gsd-media-keys-manager.c
++++ b/plugins/media-keys/gsd-media-keys-manager.c
+@@ -1381,6 +1381,67 @@
+ }
+ 
+ static void
++on_power_screen_active (GObject      *source,
++                        GAsyncResult *result,
++                        gpointer      user_data)
++{
++        g_autoptr(GError) error = NULL;
++        g_autoptr(GVariant) reply = NULL;
++
++        reply = g_dbus_proxy_call_finish (G_DBUS_PROXY (source), result, &error);
++        if (reply == NULL && !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
++                g_warning ("无法激活屏幕保护程序：%s", error->message);
++}
++
++static void
++on_power_screen_locked (GObject      *source,
++                        GAsyncResult *result,
++                        gpointer      user_data)
++{
++        g_autoptr(GCancellable) cancellable = user_data;
++        g_autoptr(GError) error = NULL;
++        g_autoptr(GVariant) reply = NULL;
++
++        reply = g_dbus_proxy_call_finish (G_DBUS_PROXY (source), result, &error);
++        if (reply == NULL) {
++                if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
++                        g_warning ("无法锁定屏幕：%s", error->message);
++                return;
++        }
++
++        if (!g_cancellable_is_cancelled (cancellable))
++                g_dbus_proxy_call (G_DBUS_PROXY (source), "SetActive",
++                                   g_variant_new ("(b)", TRUE),
++                                   G_DBUS_CALL_FLAGS_NONE, -1, cancellable,
++                                   on_power_screen_active, NULL);
++}
++
++static void
++do_power_lock_action (GsdMediaKeysManager *manager,
++                      gboolean             in_lock_screen)
++{
++        GsdMediaKeysManagerPrivate *priv = GSD_MEDIA_KEYS_MANAGER_GET_PRIVATE (manager);
++        g_autoptr(GSettings) lockdown = NULL;
++
++        /* 已锁定时保留 Mutter 与电源插件原有的输入唤醒流程。 */
++        if (in_lock_screen)
++                return;
++
++        lockdown = g_settings_new ("org.gnome.desktop.lockdown");
++        if (g_settings_get_boolean (lockdown, "disable-lock-screen"))
++                return;
++
++        if (priv->screen_saver_proxy == NULL)
++                priv->screen_saver_proxy = gnome_settings_bus_get_screen_saver_proxy ();
++
++        g_assert_nonnull (priv->screen_saver_proxy);
++
++        g_dbus_proxy_call (G_DBUS_PROXY (priv->screen_saver_proxy), "Lock", NULL,
++                           G_DBUS_CALL_FLAGS_NONE, -1, priv->bus_cancellable,
++                           on_power_screen_locked, g_object_ref (priv->bus_cancellable));
++}
++
++static void
+ allow_volume_above_100_percent_changed_cb (GSettings           *settings,
+                                            const char          *settings_key,
+                                            GsdMediaKeysManager *manager)
+@@ -2151,6 +2212,9 @@
+         }
+ 
+         switch (action_type) {
++        case GSD_POWER_BUTTON_ACTION_LOCK:
++                do_power_lock_action (manager, in_lock_screen);
++                return;
+         case GSD_POWER_BUTTON_ACTION_SUSPEND:
+                 action = GSD_POWER_ACTION_SUSPEND;
+                 break;
+--- a/plugins/power/gsd-power-manager.c
++++ b/plugins/power/gsd-power-manager.c
+@@ -21,6 +21,7 @@
+  */
+ 
+ #include "config.h"
++#include <math.h>
+ 
+ #include <stdlib.h>
+ #include <string.h>
+@@ -3000,9 +3001,14 @@
+         if (val_has == NULL || !g_variant_get_boolean (val_has))
+                 return;
+         val_als = g_dbus_proxy_get_cached_property (manager->iio_proxy, "LightLevel");
+-        if (val_als == NULL || g_variant_get_double (val_als) <= 0.f)
++        if (val_als == NULL)
+                 return;
+         ambient_last_absolute = g_variant_get_double (val_als);
++        if (!isfinite (ambient_last_absolute) || ambient_last_absolute < 0.f)
++                return;
++        /* 零照度可沿用已有归一化基准，建立基准仍需要正数。 */
++        if (manager->ambient_norm_required && ambient_last_absolute == 0.f)
++                return;
+         g_debug ("Read absolute light level: %f", ambient_last_absolute);
+ 
+         /* the user has asked to renormalize */

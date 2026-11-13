@@ -1,0 +1,51 @@
+pkgbase=erhai-npu
+pkgname=(qcom-npu-runtime erhai-npu-firmware qcom-npu-demo-model)
+pkgver=0.9.1
+pkgrel=1
+pkgdesc='高通 Hexagon v79 NPU 运行程序与离线演示'
+arch=(aarch64)
+url=https://github.com/ErikaAlk/onepluspad-2pro-Arch
+license=(MIT BSD-3-Clause Apache-2.0)
+makedepends=(dpkg)
+options=(!strip !debug)
+_version=0.1+git20261112.e1f7593-5
+source=(
+  "qcom-npu-runtime_${_version}_arm64.deb"
+  "erhai-npu-firmware_${_version}_all.deb"
+  "qcom-npu-demo-model_${_version}_arm64.deb"
+  npu-demo npu-demo.py
+)
+noextract=("${source[@]:0:3}")
+sha256sums=(
+  761e82cd1db85ff7fc344b2c823f924e76190a913fc75dc5c1a702b0b0994b04
+  5528672e2d09fb7b5028409d96b609d6a1f0dcaca92e64e22ede69df1f03b5cd
+  c7fbb944c5fa4760f59a5b8ba750d0cdf234ec11348ee6833cbb764455f79fad
+  c2cd621a3551c60f9ae09d6c32672d59f4c90afc9c8b9fdd4a55862ca4acbdf1
+  ca730f472094c2ef2f129892fb4eaa9edfbefe89616d71cc12e14ba4e9409f30
+)
+
+prepare() {
+  dpkg-deb -x "${source[0]}" runtime
+  dpkg-deb -x "${source[1]}" firmware
+  dpkg-deb -x "${source[2]}" model
+}
+
+package_qcom-npu-runtime() {
+  depends=(glibc gcc-libs libbsd libyaml python systemd erhai-npu-firmware)
+  cp -a runtime/usr "$pkgdir/"
+  install -d "$pkgdir/usr/lib"
+  mv "$pkgdir/usr/lib/aarch64-linux-gnu/"libcdsp* "$pkgdir/usr/lib/"
+  install -Dm755 npu-demo "$pkgdir/usr/bin/npu-demo"
+  install -Dm644 npu-demo.py "$pkgdir/usr/lib/erhai/npu-demo.py"
+}
+
+package_erhai-npu-firmware() {
+  provides=(qcom-npu-dsp)
+  conflicts=(qcom-npu-dsp)
+  cp -a firmware/usr "$pkgdir/"
+}
+
+package_qcom-npu-demo-model() {
+  depends=(qcom-npu-runtime)
+  cp -a model/usr "$pkgdir/"
+}

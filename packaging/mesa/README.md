@@ -1,31 +1,25 @@
-# Mesa desktop candidate
+# 共用 Mesa / Shared Mesa
 
-Mesa 26.2.3 is built with Freedreno OpenGL/GLES and Turnip Vulkan. The source
-archive and ordered patches are pinned in `source.json`. The existing A830v1
-upstream entry and texture-sequence allocator fix remain in the series.
-The three Turnip patches retain their original authors and patch envelopes;
-`0003-mesa-publish-initialized-shared-context.patch` extracts the generic context
-publication change from the attributed source commit. Its speedbin hunk is
-omitted because the existing upstream A830v1 patch already supplies it.
+`shared/` 原样导入小米集成仓的源码锁、补丁与工具，提交和每个文件的 SHA-256 见
+`provenance.json`。共享文档按其中的独立文档提交同步；源码、补丁与配方仍按主提交锁定。
+修改在来源仓完成，不单独修改导入副本。
 
-Build natively in the pinned ARM64 root, or pass `--cross-file ARM64.ini` to
-`tools/build-mesa.py --profile desktop`. Cross builds need an ARM64 C/C++
-toolchain (GCC 14 or newer), a target sysroot matching `build-root.json`, native
-Python/Meson/Ninja/glslang, and a Wayland scanner matching the target Wayland version.
-GCC 13 at `-O3` miscompiles the GLSL constant-value switch and triggers an
-assertion for valid float constants. GCC 14 retains the valid cases; assertions
-remain enabled. The build rejects older GCC and records the target compilers.
-The cross file must preserve its sysroot link flags and add
-`-Wl,-rpath,/usr/lib/erhai/mesa/lib` to both `c_link_args` and `cpp_link_args`.
-Run `tools/package-mesa.py` in the target ARM64 root for dependency scanning.
-With QEMU user emulation, always set `QEMU_CPU=max,pauth-impdef=on`.
+宿主使用 `shared/tools/build-host-mesa.py` 构建 Ubuntu 同名包；固定驱动补丁集保持原样，
+完整 arm64 驱动集和 GLVND 沿用发行版。`tools/package-mesa.py` 接收完整共用仓库及
+`piano-mesa` 过渡包，生成 `erhai-mesa` 过渡包和按整版组织的 APT 仓库。
+参数与装配方式见 [BUILD](../../docs/BUILD.md#宿主-mesa-发布批次)。
 
-Libraries stay under `/usr/lib/erhai/mesa`; session selection is unchanged.
-The package diverts both distribution Freedreno ICD filenames
-(`freedreno_icd.json` and `freedreno_icd.aarch64.json`) using `dpkg-divert`, installs
-an ICD pointing to its private Turnip library, and restores the distribution ICD
-on removal. Other Vulkan ICDs remain available. Start a new desktop session
-after installation/removal so applications load the intended library versions.
+Snap 的 `build-mesa.py` / `build-mesa-root.py` 与 gpu-2404 SDK 配方保持独立。
+更换宿主包不会更新 Snap provider。过渡包只有在升级路径完成、桌面直接依赖相应
+发行版运行库后才能移除；交回 Ubuntu 前同时撤下精确 pin 和精确依赖。
 
-These are project patches for the Adreno 830 Vulkan and compiler paths. Remove
-each one when the pinned upstream contains an equivalent fix.
+`shared/` is an unmodified import pinned by `provenance.json`. Documentation uses
+the separately recorded documentation commit; code, patches and recipes retain
+the main source commit. Make changes at the source before refreshing an import.
+Host Mesa uses `build-host-mesa.py` and
+Ubuntu package names, the complete ARM64 driver set and GLVND. The local wrapper
+consumes the complete common repository and creates the OnePlus transition and
+release batch; see [BUILD](../../docs/BUILD.en.md#host-mesa-release-batches).
+The Snap build recipe and SDK remain separate. Retire transitions only after all
+upgrade paths have migrated; remove exact pins and exact dependencies when
+returning to Ubuntu's own Mesa packages.

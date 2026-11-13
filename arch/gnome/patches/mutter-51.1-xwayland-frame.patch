@@ -1,0 +1,24 @@
+--- a/src/x11/meta-x11-frame.c
++++ b/src/x11/meta-x11-frame.c
+@@ -35,9 +35,7 @@
+ #include <X11/Xlib.h>
+ #include <X11/extensions/shape.h>
+ 
+-#define EVENT_MASK (SubstructureRedirectMask |                     \
+-                    StructureNotifyMask | SubstructureNotifyMask | \
+-                    PropertyChangeMask | FocusChangeMask)
++#define EVENT_MASK (SubstructureRedirectMask | StructureNotifyMask | SubstructureNotifyMask | PropertyChangeMask | FocusChangeMask)
+ 
+ static void
+ meta_frame_free (MetaFrame *frame)
+@@ -175,6 +173,10 @@
+       window->unmaps_pending += 1;
+     }
+ 
++  /* 客户窗口已移到新父窗口原点，缓存必须使用真实的父窗口坐标。 */
++  priv->client_rect.x = frame->child_x;
++  priv->client_rect.y = frame->child_y;
++
+   /* stick frame to the window */
+   priv->frame = g_steal_pointer (&frame);
+ 

@@ -1,10 +1,79 @@
 # Changelog
 
+## Arch v0.9.1
+
+- 同步上游 v0.6.0 之后的功能与修复，升级 Linux 7.4-rc2，保留 GNOME 51.1 与精调外观。
+- 增加匹配的 Mesa/Iris、传感器、AudioReach 音频、TuneD/zram、NPU、GunyahVM、Resources 和更新通知组件。
+- 修复 ASoC 组件计数、CAMSS DMA 容量与异常清理、Arch 管理程序目录及 Rust Binder 构建，保留 UFCS 协议与控制器适配。
+- 完成平板持久启动、桌面、图形、摄像头、传感器、音频、NPU 和 Waydroid 验收；构建、使用边界和证据说明见 [Arch 更新说明](docs/ARCH-UPSTREAM-v0.9.1.zh-CN.md)。
+
+## v0.7.0
+
+Device packages are numbered 0.7.0 and install over v0.6.x with APT; see
+"Upgrading an existing installation" in
+[FLASHING](docs/FLASHING.en.md#upgrading-an-existing-installation). Install the
+kernel and device packages together, then reboot.
+
+- Kernel `erhai-v0.7.0`, now based on Linux 7.2.15:
+  - Common peripheral drivers are built: Apple Magic Mouse touch scrolling
+    ([#16](https://github.com/yzddmr6/onepluspad-2pro-mainline/issues/16)),
+    USB game controllers, drawing tablets, USB serial and network adapters,
+    printers and USB audio, plus the F2FS, XFS and HFS+ file systems.
+  - zstd compressed RAM swap (zram) is available.
+  - The internal display offers only its 120 Hz mode. The 60 Hz and 30 Hz
+    modes, which left the panel black or grey after switching, are removed.
+  - Fixes a deadlock between UFS clock scaling and device commands, Wi-Fi RX
+    buffer replenishment and firmware-recovery handling. Iris H.264/H.265
+    encoding produces key frames on request, and resolution-changing decoding
+    finishes the old sequence correctly.
+- `erhai-mesa`: applications load the Adreno 830 Mesa build through the system
+  library path instead of environment variables; GNOME Settings shows the GPU,
+  and programs started with a cleared environment are hardware accelerated.
+- `erhai-device-support`: GNOME offers Power Saver, Balanced and Performance
+  through TuneD, which replaces power-profiles-daemon, and
+  systemd-zram-generator creates zstd swap of half the memory, up to 8 GiB; see
+  [daily-use policies](docs/DAILY.en.md).
+- `erhai-audio`: the internal speakers are enabled by default and can be
+  disabled persistently. The vendor DSP speaker protection is absent.
+
+Thanks to @zczyh0922 for the Magic Mouse report and its fix.
+
+## v0.6.1
+
+Device packages are numbered 0.6.1 and install over v0.6.0 with APT; see
+"Upgrading an existing installation" in
+[FLASHING](docs/FLASHING.en.md#upgrading-an-existing-installation).
+
+- Kernel `erhai-v0.6.1`, still based on Linux 7.2.14:
+  - 12 GB units boot. The crash-log (ramoops) region now lies in RAM that
+    both memory variants have; on 12 GB units it pointed past the end of RAM
+    and reset the tablet back to Android
+    ([#14](https://github.com/yzddmr6/onepluspad-2pro-mainline/issues/14)).
+  - The internal display works on ColorOS C.35. The DSI PHY programs its PLL
+    muxes every time the PLL bias is enabled; before, depending on the probe
+    order, the panel stayed dark or its right half was garbled and touch
+    reports failed their checksum
+    ([#13](https://github.com/yzddmr6/onepluspad-2pro-mainline/issues/13),
+    [#14](https://github.com/yzddmr6/onepluspad-2pro-mainline/issues/14)).
+  - PPS chargers fast-charge through the SC8547A charge pump at up to about
+    39 W, below 80 % charge and with the battery between 12 and 44 °C; other
+    USB PD chargers keep the 9 V contract. Charge limits and USB-C power
+    output stay with the battery manager.
+  - The CPS8601 charger charges a pen attached to the back wirelessly.
+- The installer accepts ColorOS C.35.
+- `erhai-settings`: Settings → About shows the project author and repository.
+- The kernel names yzddmr6 as its builder, and NOTICE names the copyright
+  holder of the integration code.
+
+Thanks to @zczyh0922 and @zhangrongbin876-tech for the reports and the display
+fix, and to @BUSHIGEMENNI for the fast-charging and pen-charging drivers
+([linux-sm8750-erhai#6](https://github.com/yzddmr6/linux-sm8750-erhai/pull/6)).
+
 ## v0.6.0
 
 Device packages are numbered 0.6.0 and install over v0.5.x with APT; see
 "Upgrading an existing installation" in
-[FLASHING](docs/FLASHING.md#upgrading-an-existing-installation).
+[FLASHING](docs/FLASHING.en.md#upgrading-an-existing-installation).
 
 - Kernel `erhai-v0.6.0`, still based on Linux 7.2.14:
   - Both cameras work in camera applications. The sensors run from the 24 MHz
@@ -58,7 +127,7 @@ set within 6 seconds.
 
 Device packages are numbered 0.5.0 and install over v0.4.x with APT; see
 "Upgrading an existing installation" in
-[FLASHING](docs/FLASHING.md#upgrading-an-existing-installation).
+[FLASHING](docs/FLASHING.en.md#upgrading-an-existing-installation).
 
 - Kernel `erhai-v0.5.0`, now based on Linux 7.2.14:
   - In system suspend the SoC reaches its deepest power states, CX power
@@ -105,7 +174,7 @@ established the 9 V contract.
 
 Device packages are numbered 0.4.0 and install over v0.3.x with APT; see
 "Upgrading an existing installation" in
-[FLASHING](docs/FLASHING.md#upgrading-an-existing-installation).
+[FLASHING](docs/FLASHING.en.md#upgrading-an-existing-installation).
 
 - Kernel `erhai-v0.4.0`, now based on Linux 7.2.10:
   - Storage uses the UFS multi-circular queue and lazy IOMMU invalidation:
@@ -151,7 +220,7 @@ change and none did after it.
 
 Device and sensor packages are numbered 0.3.0 and install over v0.2.x with
 APT; see "Upgrading an existing installation" in
-[FLASHING](docs/FLASHING.md#upgrading-an-existing-installation). The device
+[FLASHING](docs/FLASHING.en.md#upgrading-an-existing-installation). The device
 package archive of the release now also carries `erhai-mesa`.
 
 - Kernel `erhai-v0.3.0`:
@@ -186,7 +255,7 @@ package archive of the release now also carries `erhai-mesa`.
   transitional package. The root filesystem installs a pinned build, and the
   Firefox snap is removed after first-boot seeding. Existing installations
   switch as described in
-  [FLASHING](docs/FLASHING.md#upgrading-an-existing-installation). The
+  [FLASHING](docs/FLASHING.en.md#upgrading-an-existing-installation). The
   repository setup is based on
   [TheMojoMan's oneplus-erhai-ubuntu](https://github.com/TheMojoMan/oneplus-erhai-ubuntu).
 - The on-screen keyboard is no longer forced on. GNOME offers it for touch
@@ -196,7 +265,7 @@ package archive of the release now also carries `erhai-mesa`.
   runs the installation image as its RAM desktop; the setup boot image carries
   the `erhai-debug` package and installs it into that RAM session only, so
   neither the published image nor an installed system has USB diagnostics.
-  See "Prebuilt release images" in [FLASHING](docs/FLASHING.md).
+  See "Prebuilt release images" in [FLASHING](docs/FLASHING.en.md).
 - erhai-mesa revision 5 fixes the Mesa freedreno abort on the
   `fd6_texture_state` assertion. One GL context allocated sampler view seqnos
   in the application thread and freed them in the driver thread without
@@ -249,14 +318,14 @@ Thanks to @HOSHINO61 for both changes.
 - Prebuilt images are attached to the release: an installation root filesystem
   without USB diagnostics, the setup root filesystem and boot image for first-time
   preparation, and the device packages; see "Prebuilt release images" in
-  [FLASHING](docs/FLASHING.md).
+  [FLASHING](docs/FLASHING.en.md).
 - The kernel and device behavior are unchanged from v0.2.0 (kernel
   `erhai-v0.2.0`).
 
 ## v0.2.0
 
 Device and sensor packages are numbered 0.2.0 and install over v0.1.0 with APT;
-see "Upgrading an existing installation" in [FLASHING](docs/FLASHING.md).
+see "Upgrading an existing installation" in [FLASHING](docs/FLASHING.en.md).
 
 - System suspend defaults to s2idle. On the installed tablet, 300-second
   RTC-timed suspends in both display modes resume the display, touch, Wi-Fi and
@@ -296,5 +365,5 @@ Developer source preview for the OnePlus Pad 2 Pro (OPD2413).
 - Dual-boot switching for the documented installation layout and optional USB diagnostics.
 
 Tested hardware support and known limitations are maintained in the
-[README](README.md#hardware-support). Build and recovery instructions are in
-[BUILD](docs/BUILD.md) and [FLASHING](docs/FLASHING.md).
+[README](README.en.md#hardware-support). Build and recovery instructions are in
+[BUILD](docs/BUILD.en.md) and [FLASHING](docs/FLASHING.en.md).

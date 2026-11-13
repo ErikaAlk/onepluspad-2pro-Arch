@@ -1,0 +1,52 @@
+pkgname=erhai-upstream-runtime
+pkgver=0.9.1
+pkgrel=2
+pkgdesc='一加平板 2 Pro 音频、CDSP 固件、更新通知与双系统切换'
+arch=(any)
+url=https://github.com/ErikaAlk/onepluspad-2pro-Arch
+license=(GPL-2.0-only MIT BSD-3-Clause)
+depends=(alsa-ucm-conf wireplumber pipewire python python-gobject systemd util-linux polkit)
+makedepends=(alsa-utils m4)
+options=(!strip)
+install=erhai-upstream-runtime.install
+source=(erhai-arch-v0.9.1.tar.gz erhai-switch switch-common.sh)
+sha256sums=(
+  68a85a7104f306d4d6234e9f2eb3ef0ec41ee105b9bd5f928e25008a92e2c2b0
+  f3c0b92f0f84bd3d6963a382fbe451a96711c6ef6fe78584f1d52e5c283366a8
+  7d5b4ad32da86e370e8a95d36884fcd56095c973321ad8a1271ef2324c0b551e
+)
+
+prepare() {
+  bsdtar -xf onepluspad-2pro-mainline-0.9.1/packaging/audio/audioreach-topology-993a17dc.tar.gz
+}
+
+build() {
+  local inputs=$srcdir/onepluspad-2pro-mainline-0.9.1/packaging/audio
+  m4 -I "$inputs" -I "$srcdir/audioreach-topology-993a17dcb672357998a463a73f120064d6c74f4f" \
+    "$inputs/OnePlus-Pad-2-Pro.m4" > topology.conf
+  alsatplg -c topology.conf -o OnePlus-Pad-2-Pro-tplg.bin
+}
+
+package() {
+  local upstream=onepluspad-2pro-mainline-0.9.1
+  cp -a "$upstream/packaging/erhai-audio/tree/." "$pkgdir/"
+  install -d "$pkgdir/usr/bin"
+  mv "$pkgdir/usr/sbin/erhai-audio-speaker" "$pkgdir/usr/bin/"
+  rmdir "$pkgdir/usr/sbin"
+  install -Dm644 OnePlus-Pad-2-Pro-tplg.bin "$pkgdir/usr/lib/firmware/qcom/sm8750/OnePlus-Pad-2-Pro-tplg.bin"
+  install -Dm644 audioreach-topology-993a17dcb672357998a463a73f120064d6c74f4f/LICENSE.BSD-3-Clause \
+    "$pkgdir/usr/share/licenses/$pkgname/AudioReach"
+  cp -a "$upstream/packaging/release-notifier/." "$pkgdir/"
+  install -Dm644 "$upstream/packaging/erhai-release-notifier/copyright" "$pkgdir/usr/share/licenses/erhai-release-notifier/LICENSE"
+  install -d "$pkgdir/usr/share/mainline-release"
+  printf '%s\n' 0.9.1 > "$pkgdir/usr/share/mainline-release/version"
+  install -Dm755 erhai-switch "$pkgdir/usr/bin/erhai-switch"
+  install -Dm644 switch-common.sh "$pkgdir/usr/bin/switch-common.sh"
+  install -Dm755 "$upstream/switch/erhai-switch-install-ubuntu-images" "$pkgdir/usr/bin/erhai-switch-install-ubuntu-images"
+  install -Dm644 "$upstream/packaging/erhai-device-support/tree/usr/share/polkit-1/actions/org.erhai.switch.policy" "$pkgdir/usr/share/polkit-1/actions/org.erhai.switch.policy"
+  install -Dm644 "$upstream/packaging/erhai-device-support/tree/usr/share/applications/erhai-switch-to-android.desktop" "$pkgdir/usr/share/applications/erhai-switch-to-android.desktop"
+  local file
+  for file in "$upstream/packaging/firmware/qcom/sm8750/erhai/"cdsp*; do
+    install -Dm644 "$file" "$pkgdir/usr/lib/firmware/qcom/sm8750/erhai/${file##*/}"
+  done
+}

@@ -1,0 +1,39 @@
+diff --git a/src/freedreno/vulkan/meson.build b/src/freedreno/vulkan/meson.build
+--- a/src/freedreno/vulkan/meson.build
++++ b/src/freedreno/vulkan/meson.build
+@@ -199,8 +199,17 @@ if cpp.get_id() == 'gcc'
+   tu_cpp_args += cpp.get_supported_arguments(['-Wno-misleading-indentation'])
+ endif
+ 
++tu_library_name = 'vulkan_freedreno'
++tu_library_prefix = libname_prefix
++tu_install_dir = get_option('libdir')
++if with_platform_android
++  tu_library_name = 'vulkan.freedreno'
++  tu_library_prefix = ''
++  tu_install_dir = join_paths(get_option('libdir'), 'hw')
++endif
++
+ libvulkan_freedreno = shared_library(
+-  'vulkan_freedreno',
++  tu_library_name,
+   [libtu_files, tu_drirc, tu_entrypoints, tu_tracepoints, freedreno_xml_header_files, sha1_h, u_format_pack_h, bvh_spv],
+   include_directories : libtu_includes,
+   link_with : [
+@@ -230,5 +239,7 @@ libvulkan_freedreno = shared_library(
+   link_depends : vulkan_icd_link_depends,
+   install : true,
++  install_dir : tu_install_dir,
++  name_prefix : tu_library_prefix,
+ )
+ 
+ if with_symbols_check
+@@ -247,7 +258,7 @@ if with_symbols_check
+   )
+ endif
+ 
+-icd_file_name = libname_prefix + 'vulkan_freedreno.' + libname_suffix
++icd_file_name = tu_library_prefix + tu_library_name + '.' + libname_suffix
+ 
+ freedreno_icd = custom_target(
+   'freedreno_icd',

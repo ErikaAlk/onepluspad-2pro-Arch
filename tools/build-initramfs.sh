@@ -13,10 +13,10 @@ else
 fi
 busybox=${BUSYBOX:-"$ws/cache/busybox-arm64"}
 out=${OUT_DIR:-"$ws/out/initramfs-dev"}
-gen_init_cpio=${GEN_INIT_CPIO:-"$ws/out/kernel-firstboot/usr/gen_init_cpio"}
+gen_init_cpio=${GEN_INIT_CPIO:-"$ws/out/kernel/scripts/gen_init_cpio"}
 expected=52151e7f322f926b64049cdaa1410dc3ea6485525e0624b05813791c219ae933
 [[ $(sha256sum "$busybox" | cut -d' ' -f1) == "$expected" ]] || {
-	echo 'Expected the pinned Ubuntu ARM64 static BusyBox; see README.md (inputs).' >&2
+	echo 'Expected the pinned Ubuntu ARM64 static BusyBox; see README.en.md (inputs).' >&2
 	exit 1
 }
 [[ -x $gen_init_cpio ]] || {
@@ -39,7 +39,7 @@ ncm) init_src="$repo/initramfs/init-ncm"; usb_src="$repo/initramfs/usb-ncm"
 	# workspace kernel uapi headers. Skipped in standalone checkouts that
 	# have no kernel tree; WB_CAPTURE=on makes it a hard requirement.
 	wb_src="$repo/tools/wb-capture.c"
-	wb_inc="$ws/kernel/linux"
+	wb_inc=${KERNEL_SOURCE:-"$ws/kernel/linux"}
 	if [[ -f $wb_src && -d $wb_inc/include/uapi/drm ]]; then
 		wb_bin="$out/wb-capture"
 		"${CROSS_COMPILE:-aarch64-linux-gnu-}"gcc -static -O2 -Wall -Wextra \
@@ -54,15 +54,15 @@ ncm) init_src="$repo/initramfs/init-ncm"; usb_src="$repo/initramfs/usb-ncm"
 	fi
 	# Novatek NT36536 TDDI loses its RAM firmware on every panel prepare; the
 	# built-in touch driver requests it from the rootfs.
-	firmware="$repo/packaging/firmware"
+	firmware="${FIRMWARE_TREE:-$repo/packaging/firmware}"
 	# The initramfs and installed firmware package use the same original
 	# inputs. Never chain a new boot image from a previous OUT's blobs.
-	python3 - "$repo" <<'PY'
+	python3 - "$repo" "$firmware" <<'PY'
 import hashlib, json, pathlib, sys
 repo = pathlib.Path(sys.argv[1])
 manifest = json.loads((repo / 'packaging/firmware-manifest.json').read_text())
 for entry in manifest['files']:
-    path = repo / 'packaging/firmware' / entry['install']
+    path = pathlib.Path(sys.argv[2]) / entry['install']
     data = path.read_bytes()
     if len(data) != entry['size'] or hashlib.sha256(data).hexdigest() != entry['sha256']:
         raise SystemExit(f'Firmware does not match manifest: {entry["install"]}')
@@ -89,11 +89,17 @@ exec 9>"$out/.build.lock"
 flock -n 9 || { echo 'Initramfs output is already in use.' >&2; exit 1; }
 stage=$(mktemp -d "$out/stage.XXXXXX")
 trap 'rm -rf -- "$stage"' EXIT
+if [[ $profile == ncm ]]; then
+	: "${ROOT_FSCK_ROOT:?set ROOT_FSCK_ROOT to the verified Ubuntu ARM64 root used for this build}"
+	python3 "$repo/tools/lib/build-root-fsck.py" --root "$ROOT_FSCK_ROOT" --out "$stage/fsck" --layout "${ROOT_FSCK_LAYOUT:-ubuntu}"
+	cp "$stage/fsck/root-fsck-files.json" "$out/root-fsck-files.json"
+fi
 {
 	sha256sum "$init_src" "$usb_src" | cut -d' ' -f1
 	[[ -z ${extra_bins:-} ]] || sha256sum "$wb_src" | cut -d' ' -f1
 	[[ -z ${identity_src:-} ]] || sha256sum "$identity_src" | cut -d' ' -f1
 	[[ -z ${ncm_helper:-} ]] || sha256sum "$ncm_helper" "$ncm_config" | cut -d' ' -f1
+	[[ $profile != ncm ]] || sha256sum "$repo/initramfs/root-fsck" "$stage/fsck/root-fsck-files.json" | cut -d' ' -f1
 	printf '%s\n' "$expected"
 } | sha256sum | cut -d' ' -f1 >"$stage/build-id"
 {
@@ -162,11 +168,16 @@ trap 'rm -rf -- "$stage"' EXIT
 	fi
 	if [[ -n ${adsp_src:-} ]]; then
 		[[ -f $adsp_src/adsp.mdt ]] || { echo "ADSP mdt not found: $adsp_src/adsp.mdt" >&2; exit 1; }
+		for image in cdsp.mdt cdsp_dtb.mdt; do
+			[[ -f $adsp_src/$image ]] || { echo "CDSP firmware missing: $image" >&2; exit 1; }
+		done
 		for d in /lib/firmware/qcom /lib/firmware/qcom/sm8750 "$adsp_dst"; do
 			printf 'dir %s 0755 0 0\n' "$d"
 		done
 		for seg in "$adsp_src"/adsp.mdt "$adsp_src"/adsp.b* \
-			"$adsp_src"/adsp_dtb.mdt "$adsp_src"/adsp_dtb.b*; do
+			"$adsp_src"/adsp_dtb.mdt "$adsp_src"/adsp_dtb.b* \
+			"$adsp_src"/cdsp.mdt "$adsp_src"/cdsp.b* \
+			"$adsp_src"/cdsp_dtb.mdt "$adsp_src"/cdsp_dtb.b*; do
 			[[ -f $seg ]] || continue
 			printf 'file %s/%s %s 0644 0 0\n' "$adsp_dst" "$(basename -- "$seg")" "$seg"
 		done
@@ -175,6 +186,22 @@ trap 'rm -rf -- "$stage"' EXIT
 		# is mounted.
 		[[ -f $adsp_src/soccp.mbn ]] || { echo "SoCCP firmware not found: $adsp_src/soccp.mbn" >&2; exit 1; }
 		printf 'file %s/soccp.mbn %s 0644 0 0\n' "$adsp_dst" "$adsp_src/soccp.mbn"
+	fi
+	if [[ $profile == ncm ]]; then
+		printf 'file /bin/root-fsck %s 0755 0 0\n' "$repo/initramfs/root-fsck"
+		python3 - "$stage/fsck" <<'FSCK_CPIO'
+import json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+files = json.loads((root / 'root-fsck-files.json').read_text())
+dirs = set()
+for name in files:
+    dirs.update(str(p) for p in pathlib.Path(name).parents if str(p) != '.')
+for name in sorted(dirs):
+    print(f'dir /{name} 0755 0 0')
+for name in files:
+    mode = '0644' if name.startswith('etc/') else '0755'
+    print(f'file /{name} {root / name} {mode} 0 0')
+FSCK_CPIO
 	fi
 	for app in $apps; do
 		printf 'slink /bin/%s busybox 0777 0 0\n' "$app"
