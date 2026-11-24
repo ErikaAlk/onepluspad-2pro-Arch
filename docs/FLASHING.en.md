@@ -26,7 +26,7 @@ timeout established in advance. Do not combine artifacts from unrelated builds.
 
 Development sessions need explicit device selection, bounded timeouts and
 userspace recovery. Panic/userspace timers cannot recover every hardware lockup.
-Unauthenticated USB diagnostics are for trusted direct connections only.
+USB development access requires the host SSH key.
 
 ## Return to Android on an existing installation
 
@@ -37,9 +37,7 @@ These steps require the established project layout and complete switcher storage
 - In Android, use the installed KernelSU switching module; see the
   [switcher reference](../switch/README.md) for its installation and path conventions.
 - An installed Linux system net-charges from a USB PD charger; on a computer's USB
-  port the battery still drains. Fastboot does not charge: when the battery
-  runs low there, return to Android to charge and confirm that capacity has
-  recovered before continuing.
+  port the battery still drains. Fastboot does not charge.
 
 Both switching directions have been tested on the existing layout. Switching
 writes three boot partitions; it does not apply to a fresh tablet, missing
@@ -60,7 +58,6 @@ One root filesystem serves both first-time preparation and installation.
 |---|---|
 | `ubuntu-pad2pro-VERSION-rootfs.squashfs.part*` and `…-rootfs.manifest.json` | Root filesystem to install, without USB diagnostics; first-time preparation also runs it as the temporary RAM desktop |
 | `ubuntu-pad2pro-VERSION-setup-boot.img` and `…-setup-boot.manifest.json` | Boot image of that temporary RAM desktop; it loads the root filesystem from the host and adds the USB diagnostic channel to that session only |
-| `erhai-device-packages-VERSION.tar` | New and previous complete package repositories for upgrades and rollback, including device, shared graphics and desktop packages, without USB diagnostics |
 | `erhai-switch-VERSION.zip` | Android switch module |
 | `SHA256SUMS` | Checksums of every asset and of the joined image |
 
@@ -77,9 +74,7 @@ the joined image as `out/desktop-root/rootfs.squashfs` and its manifest as
 `out/desktop-root/manifest.json`. First-time preparation serves that file to the
 tablet and boots `ubuntu-pad2pro-VERSION-setup-boot.img` instead of
 `out/ram-desktop/boot-mainline.img`; installation passes the same file to
-`--rootfs`. For an upgrade, unpack `erhai-device-packages-VERSION.tar` and install
-its packages as described in
-[Upgrading an existing installation](#upgrading-an-existing-installation).
+`--rootfs`. For upgrades, see [UPGRADE](UPGRADE.en.md).
 
 ## Preparing Linux partitions for the first time
 
@@ -131,13 +126,15 @@ for part in boot init_boot vendor_boot; do
   adb -s "$device_serial" exec-out su -c "cat /dev/block/by-name/${part}_a" > "$device_backup/$part.img"
 done
 adb -s "$device_serial" reboot bootloader
-fastboot -s "$device_serial" boot out/ram-desktop/boot-mainline.img
+ssh-keygen -t ed25519 -f "$device_backup/setup-ssh" -N ''
+python3 tools/authorize-setup-ssh.py out/ram-desktop/boot-mainline.img "$device_backup/setup-ssh.pub" "$device_backup/setup-boot.img"
+fastboot -s "$device_serial" boot "$device_backup/setup-boot.img"
 ```
 
 Use `ip -br link` to find the new USB network interface and substitute its name
 for `USB_INTERFACE` below. Skip address configuration if USB DHCP has already
 assigned `192.168.77.10` to the host. Keep this diagnostic network connected only
-to your own computer. The host needs `curl` and a Telnet client.
+to your own computer. The host needs an OpenSSH client.
 
 ```sh
 sudo ip link set USB_INTERFACE up
@@ -145,7 +142,7 @@ sudo ip address replace 192.168.77.10/24 dev USB_INTERFACE
 ```
 
 Wait for the RAM desktop, then connect from the host with
-`telnet 192.168.77.2 2323`. In the tablet's root shell, save the partition-table
+`ssh -o HostKeyAlias=erhai-setup -o UserKnownHostsFile="$device_backup/setup-known-hosts" -i "$device_backup/setup-ssh" root@192.168.77.2`. In the tablet's root shell, save the partition-table
 backup and display the plan:
 
 ```sh
@@ -157,8 +154,8 @@ In the host terminal, retrieve both backup files:
 
 ```sh
 set -e
-curl --fail http://192.168.77.2:8081/run/erhai-gpt-backup.bin -o "$device_backup/gpt.bin"
-curl --fail http://192.168.77.2:8081/run/erhai-gpt-backup.json -o "$device_backup/gpt.json"
+ssh -o HostKeyAlias=erhai-setup -o UserKnownHostsFile="$device_backup/setup-known-hosts" -i "$device_backup/setup-ssh" root@192.168.77.2 cat /run/erhai-gpt-backup.bin > "$device_backup/gpt.bin"
+ssh -o HostKeyAlias=erhai-setup -o UserKnownHostsFile="$device_backup/setup-known-hosts" -i "$device_backup/setup-ssh" root@192.168.77.2 cat /run/erhai-gpt-backup.json > "$device_backup/gpt.json"
 ```
 
 Once the backups are on the host and you accept losing all Android data, apply
@@ -206,7 +203,7 @@ switcher to activate the Ubuntu boot triplet. Stock devices without Linux
 partitions are outside this procedure.
 
 The host needs amd64 Linux, rootful Docker, Android platform-tools, ARM64 binfmt, a native C compiler and `dpkg-deb`. Start with Android
-running, battery at least 50%, USB debugging, working KernelSU root and this
+running, USB debugging, working KernelSU root and this
 project's switch module installed. Firmware must match the [tested combination](../packaging/installation.json); another OTA on the same model is not automatically accepted. Use the build guide's `rootfs.squashfs` and
 its adjacent `manifest.json`. Allow space for the private installation images.
 The installer builds the pinned AOSP `ext2simg` tool, which uses the ext4 allocation
@@ -249,53 +246,16 @@ the newly installed contents.
 
 ## Daily use and USB diagnostics
 
-The unauthenticated USB root shell and file service of first-time preparation
-exist only in the RAM session of the setup boot image. The root filesystem and
-an installation made from it have no diagnostic channel. To keep the channel
-for development with a trusted host, assemble the root filesystem from device
-packages built with `--debug` (see the [build guide](BUILD.en.md#device-packages))
-and install that root instead: their kernel package adds `erhai.debug=1` to the
-boot images and requires `erhai-debug`.
+The personalised RAM setup image authorizes the host key for that boot. For an installed development system, provision the host public key in `/root/.ssh/erhai/authorized_keys` (root-owned directory mode 0700, file mode 0600) locally or during an existing trusted session **before upgrading or rebooting**. Install the optional `erhai-debug` package and enable the development boot profile. The SSH login is `root@192.168.77.2`; transfer files through SSH.
 
-Installing regular device packages over such an installation, built without
-`--debug` into a new empty output directory or taken from a release's
-`erhai-device-packages-VERSION.tar` as described in
-[Upgrading an existing installation](#upgrading-an-existing-installation),
-replaces the diagnostic boot images. After reboot, the USB shell, HTTP service
+Installing regular device packages over such an installation, built without `--debug`,
+replaces the diagnostic boot images. After reboot, the USB SSH service
 and diagnostic DHCP stay disabled. Stopping only the desktop services does not
 disable the early-boot channels in a diagnostic image.
 
 ## Upgrading an existing installation
 
-A newer release installs over an existing installation with APT. It does not
-repartition the tablet, reinstall Ubuntu or touch Android. Build the release's
-device packages and sensor package (`tools/build-debs.py` and `tools/build-sensors.py`,
-see the [build guide](BUILD.en.md#device-packages)), each into a new empty output
-directory, with the same choice of `--debug` as the installed packages. Transfer
-both directories to the tablet, then run in its terminal:
-
-```sh
-sudo apt install ./device-packages/*.deb ./sensor-debs/*.deb && sudo reboot
-```
-
-The release's `erhai-device-packages-VERSION.tar` contains new and previous complete batches under `repositories/`.
-After verifying and extracting it, run the complete upgrade tool as described in the matching [upgrade guide](UPGRADE.en.md) section.
-Do not mix debs from every repository in a wildcard installation. The tool saves the previous packages and boot set before changing packages, for complete rollback.
-
-The kernel package writes the new boot images to the active slot during the
-installation, and the previous kernel package stays installed. The sensor
-registry imported at installation time is kept. If the new kernel does not start,
-follow the recovery steps below.
-
-The `erhai-firefox` package moves Firefox from the Ubuntu snap to Mozilla's deb.
-After the upgrade, run `sudo apt update && sudo apt install firefox` and accept
-the replacement of Ubuntu's transitional `firefox` package, which APT lists as a
-downgrade because of that package's version epoch. The snap keeps each user's
-profile in `~/snap/firefox/common/.mozilla/firefox`; to keep it, copy it before
-the first start of the new Firefox with
-`mkdir -p ~/.mozilla && cp -a ~/snap/firefox/common/.mozilla/firefox ~/.mozilla/`,
-then remove the snap with `sudo snap remove firefox`. The snap is removed
-automatically at boot only when no user has a `~/snap/firefox` directory.
+[Upgrade with APT](UPGRADE.en.md).
 
 ## Failure and full stock recovery
 

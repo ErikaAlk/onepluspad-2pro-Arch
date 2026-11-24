@@ -23,7 +23,7 @@ source=(http://mirror.archlinuxarm.org/aarch64/extra/gnome-control-center-51.1-1
   gnome-51.1-power-fixes-aarch64.tar.xz)
 noextract=("${source[@]##*/}")
 sha256sums=(47ca146edf352361e9af26af10f6d85d406af388c18ab82b648c439548c190f0
-  36b7bbe549c7117b1062d52fbb12822e1cebec74ea4d8d15166ddd81e545ffce)
+  f3f8ebbaac9966d74af93945333151bdd6cd0e0b636754170c37a209701c300a)
 
 package() {
   bsdtar --no-same-owner -xf "$srcdir/gnome-control-center-51.1-1-aarch64.pkg.tar.xz" -C "$pkgdir" --exclude '.*'

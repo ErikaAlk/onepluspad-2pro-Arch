@@ -1,6 +1,6 @@
 # Arch Linux ARM
 
-本仓库维护一加平板 2 Pro（OPD2413 / SM8750P）的 Arch Linux ARM 定制，基于上游 v0.9.1，使用 GNOME Wayland，并保留 Waydroid 和 Android 双系统。当前组件和验证范围见[上游更新说明](ARCH-UPSTREAM-v0.9.1.zh-CN.md)。
+本仓库维护一加平板 2 Pro（OPD2413 / SM8750P）的 Arch Linux ARM 定制，使用 GNOME Wayland、Waydroid 和 Android 双系统。当前组件和验证范围见 [v0.12.2 更新说明](ARCH-UPSTREAM-v0.12.2.zh-CN.md)。
 
 ## 源码
 
@@ -8,12 +8,12 @@
 
 | 内容 | 固定版本 |
 |---|---|
-| 上游内核 | `v0.9.1` / `29eda7337ed1af7316ea93ea73465b10f8ebeaff` |
-| 定制内核 | `e1d6b7c2f8482b707d2117781481d7827e40554d`，`7.4.0-rc2-erhai-arch-v091+` |
-| Arch 配套源码 | `25325453637b1f9f4c128d969269a5a132111f78` |
-| Arch 支持包 | `erhai-upstream-support 0.9.1-1` |
+| 上游内核 | `v0.12.2` / `658c139dd9f3f51acd019545febb65f7a7956be2` |
+| 定制内核 | `1b9526dfda28eb9b8790ab7e36ccc62207d463de`，`7.4.0-rc2-erhai-arch-v0122+` |
+| Arch 配套源码 | `7b862f9066dbc53f8646e7513188c7adb4400280` |
+| Arch 支持包 | `erhai-upstream-support 0.12.2-1` |
 
-`arch/kernel-custom.bundle` 保存定制内核的原始 Git 提交和合并关系，需与上游基线历史共同使用。它包含 UFCS 受电端与 SC8547A PHY、USBSS 充电路径、CCI/DMA 安全修复、gen4 帧尾填充以及限定 KUnit 测试。Waydroid、网络、Landlock 和 PSI 配置包含在已验证的完整内核配置中；单独配置片段也一并保留。
+`arch/kernel-custom.bundle` 包含相机 DMA 和 ASoC 修复，需与上游基线历史共同使用。充电使用上游驱动。完整配置包含 Waydroid、网络、Landlock 和 PSI。
 
 Arch 配套包包含相机调校、GNOME锁屏电源键、插电与合盖策略、TuneD、zram、SoCCP和chrony。校时优先使用NTS，NetworkManager dispatcher使用chrony提供的DHCP脚本。CDSP、音频、更新通知与双系统工具由独立运行组件包管理。
 
@@ -24,6 +24,7 @@ Arch 配套包包含相机调校、GNOME锁屏电源键、插电与合盖策略�
 准备内核、构建 Image/DTB/模块、运行限定相机缓冲区测试和构建 Arch 配套包。每条命令独立执行，目录参数请使用绝对路径：
 
 ```sh
+git fetch https://github.com/yzddmr6/onepluspad-2pro-mainline refs/tags/v0.12.2
 bash arch/tools/prepare-kernel.sh /path/to/kernel-erhai-arch
 bash arch/tools/build-kernel.sh /path/to/kernel-erhai-arch /path/to/out/kernel-erhai-arch
 bash arch/tools/test-camss.sh /path/to/kernel-erhai-arch /path/to/out/camss-kunit

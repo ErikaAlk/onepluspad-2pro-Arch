@@ -1,0 +1,7 @@
+Package: mainline-update
+Version: 0.2.1
+Architecture: all
+Section: admin
+Priority: optional
+Maintainer: yzddmr6 <46088090+yzddmr6@users.noreply.github.com>
+Description: Transitional package for the APT update service

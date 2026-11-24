@@ -1,14 +1,14 @@
 {
   "kernel": {
     "repository": "https://github.com/yzddmr6/linux-sm8750-erhai",
-    "baseline_tag": "v0.9.1",
-    "baseline_commit": "29eda7337ed1af7316ea93ea73465b10f8ebeaff",
-    "custom_commit": "2fcc524a06da1bcd8d5937dd48fa7660d14e9155",
+    "baseline_tag": "v0.12.2",
+    "baseline_commit": "658c139dd9f3f51acd019545febb65f7a7956be2",
+    "custom_commit": "1b9526dfda28eb9b8790ab7e36ccc62207d463de",
     "bundle": "kernel-custom.bundle",
-    "bundle_sha256": "31ca55b1ac6cac4f3312bb81f7f6e14384f53f0b98b74363eea50edd67a69a98",
-    "bundle_ref": "refs/heads/feat/arch-v091",
+    "bundle_sha256": "9eaf925a47643b8bc5b1c74ab91177a928d3fa76046d3d0664f18dca7dab0c34",
+    "bundle_ref": "refs/heads/feat/arch-v0122-upstream-power",
     "config": "config/kernel.config",
-    "config_sha256": "ac5d2e7576fde23711844b64115dfe9b778faecfa49758f313917661aff47da2"
+    "config_sha256": "40cefc779193d76563a29917eb776846cb7a36ff4a9f30900e82b3086b08d82d"
   },
   "sensors": {
     "source_lock": "packaging/sensors/sources.json",
@@ -17,7 +17,7 @@
     "arch_package": "erhai-sensors-runtime 0.7.2-2"
   },
   "support_package": {
-    "integration_commit": "25325453637b1f9f4c128d969269a5a132111f78",
-    "source_archive_sha256": "68a85a7104f306d4d6234e9f2eb3ef0ec41ee105b9bd5f928e25008a92e2c2b0"
+    "integration_commit": "7b862f9066dbc53f8646e7513188c7adb4400280",
+    "source_archive_sha256": "f64bd2e3513b3af8c5f1bd9b2e3bddf41fe8467bbbb969a647173fbc1e9169fb"
   }
 }

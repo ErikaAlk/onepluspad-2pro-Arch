@@ -5,6 +5,8 @@ kernel based on upstream Linux. [中文](README.md)
 
 Official builds are published only in this repository's [Releases](https://github.com/yzddmr6/onepluspad-2pro-mainline/releases), free of charge.
 
+**Turn your tablet into a touchscreen Linux computer:** run Linux applications on the native GNOME desktop, manage ARM64 virtual machines with the preinstalled GunyahVM, and use Waydroid for Android applications with Adreno GPU acceleration.
+
 ## 🧭 Our Approach
 
 There are roughly two ways to bring a Linux desktop to an Android tablet.
@@ -51,23 +53,18 @@ primarily in Chinese.
   and reinstallation are provided for the 512 GB model. First-time partitioning
   erases Android data. See the [installation and recovery guide](docs/FLASHING.en.md)
   for firmware and layout requirements.
-- **Power:** A PPS charger fast-charges the battery through the charge pump at up to
-  about 39 W (below 80 % charge, battery between 12 and 44 °C); other USB PD chargers
-  get the 9 V contract (up to 18 W input). On a computer's USB port with the screen on,
-  the tablet uses more than the port supplies and the battery still drains slowly. The
-  stock SUPERVOOC protocol is not available under Linux. Fastboot is not a
+- **Power:** Compatible SUPERVOOC, UFCS and PPS chargers support fast charging from 0 °C to below 51 °C, including when connected at a high state of charge. Power follows cell temperature and voltage, tapering near full charge. Compatible PD and QC chargers support 9 V charging.
+  Fastboot is not a
   charging fallback.
-  Closing the keyboard cover or a case suspends the tablet; the power button defaults to locking the
+  On battery power, closing the keyboard cover or a case suspends the tablet; the power button defaults to locking the
   screen and can be configured in Settings > Power. In suspend the SoC reaches its deepest
   power states. When idle, the screen dims and blanks with Ubuntu's defaults and the tablet
-  suspends on battery.
+  can suspend on battery or weak USB power.
   See [System suspend](docs/SUSPEND.en.md) for timings and power-button settings.
 - **Data and recovery:** unlocking the bootloader erases user data. Back up
   personal files and obtain matching stock firmware before changing the device.
   Keep factory calibration and device addresses specific to each tablet.
-- **Debug access:** USB diagnostics are for development. When enabled, they
-  expose an unauthenticated root shell and HTTP service. Connect only to a
-  trusted computer and keep these services off public networks.
+- **Debug access:** Explicit development boots offer key-only SSH over USB. Provision your host key as described in the [installation guide](docs/FLASHING.en.md).
 
 ## 🚀 Getting Started
 
@@ -122,39 +119,41 @@ Features under development are not included in the supported feature set.
 
 | Feature | Component / Implementation | Status | Scope and limitations |
 |---|---|---|---|
+| System updates | Signed APT repository | ✅ | Install project updates with Software Updater or APT. |
 | Boot and storage | SM8750P / UFS | ✅ | Ubuntu boot and storage access work. Dual-boot switching is limited to the partition layout described above. |
-| Internal display | Dual DSI / DSC | ✅ | 3392 × 2400 at 120 Hz only. |
+| Internal display | Dual DSI / DSC | ✅ | 3392 × 2400 at 120 Hz by default, with an optional 90 Hz mode. |
 | Touch | Novatek NT36536 | ✅ | Finger input, desktop interaction and login work. Pen support is listed separately. |
 | GPU and desktop | Adreno 830 / Freedreno / Turnip / Mesa | ✅ | GNOME, OpenGL and Vulkan hardware rendering work. Vulkan uses Turnip. If GPU recovery fails, applications can remain stuck during exit and a reboot may be needed. |
 | Brightness | Dual KTZ8868 / one backlight interface | ✅ | Unified backlight control supports manual brightness adjustment and screen blanking. |
-| Magnetic keyboard | Pogo keyboard / touchpad | ✅ | Keyboard input works and stays connected while idle and after system sleep. The on-screen keyboard appears for touch input when detached and hides when attached. Holding the magnifier key turns the top row into F1 to F12. |
-| Active pen | NT36536 pen input | 🟡 | Pen input is not enabled yet: the driver is present but off by default. |
-| Pen charging | CPS8601 | ✅ | A pen attached to the back charges wirelessly. |
+| Magnetic keyboard | Pogo keyboard / touchpad | ✅ | Keyboard input works and stays connected while idle and after system sleep. The on-screen keyboard appears for touch input when detached and hides when attached. Holding the magnifier key turns the top row into F1 to F12. Esc works over both connectors and Bluetooth. Bluetooth supports click-and-drag. |
+| Active pen | NT36536 pen input | ✅ | Pen scanning is enabled by default. |
+| Pen charging | CPS8601 | ✅ | A docked pen charges wirelessly. Pencil 2 connects automatically and reports its battery level over Bluetooth. The charging chip firmware ships with the system. |
 
 ### Wireless and USB
 
 | Feature | Component / Implementation | Status | Scope and limitations |
 |---|---|---|---|
-| Wi-Fi | WCN7860 / ath12k | ✅ | Networking, automatic connection at boot and data transfers work. Packages keep the radio in world domain `00`. 5 GHz uses passive scanning and cannot host a hotspot. Changing the country code while associated can crash the WLAN firmware; do not do so. |
+| Wi-Fi | WCN7860 / ath12k | ✅ | Networking, automatic connection at boot and data transfers work. Transmit power follows the firmware and active regulatory domain. Packages keep the radio in world domain `00`. 5 GHz uses passive scanning and cannot host a hotspot. Changing the country code while associated can crash the WLAN firmware; do not do so. |
 | Bluetooth | WCN7860 / BlueZ | ✅ | The Bluetooth controller, scanning and device connections work. |
 | USB device mode | USB-C / NCM | 🟡 | USB networking works. Some unplug/replug cycles require a reboot to restore the connection. |
 | USB host peripherals | HID, storage, network and digital audio | ✅ | USB drives connected directly through a USB-C to USB-A adapter receive power from the tablet and can be recognized and mounted. A mouse connected through a dock works without external PD power. |
-| USB storage formats | UAS, exFAT and NTFS3 | ✅ | exFAT and NTFS3 support reading, writing and Chinese filenames. NTFS USB drives mount automatically on the desktop. |
+| USB storage formats | UAS, exFAT and NTFS3 | ✅ | exFAT and NTFS3 support reading, writing and Chinese filenames. NTFS USB drives mount automatically on the desktop. USB optical drives read ISO 9660, Joliet and UDF. |
 | External display | USB-C DisplayPort Alt Mode | ✅ | External monitor output works over USB-C DisplayPort. |
-| External display audio | DisplayPort / ALSA / PipeWire | ❌ | Disabled by default: the playback configuration prevents microphone discovery with no monitor attached. External display audio playback is unavailable. |
+| External display audio | DisplayPort / ALSA / PipeWire | ✅ | Select DisplayPort playback when a monitor is connected. |
 
 ### Audio, Video and Sensors
 
 | Feature | Component / Implementation | Status | Scope and limitations |
 |---|---|---|---|
 | Internal microphones | WCD939x / ALSA / PipeWire | ✅ | Default input and two-channel capture work, including recording before and after suspend. |
-| Speakers | Six AW88261 amplifiers / AudioReach | 🟡 | Speakers are enabled by default and can be disabled persistently. Vendor DSP speaker protection is absent. See [daily-use policies](docs/DAILY.en.md). |
+| Speakers | Six AW88261 amplifiers / AudioReach | 🟡 | Speakers are enabled by default and can be disabled persistently. Vendor DSP speaker protection is absent. See [daily-use policies](docs/DAILY.en.md). Stereo channels follow screen orientation. |
 | USB-C analog audio | WCD939x headset path | ❌ | Analog adapters and headset detection are not implemented. Digital USB audio is tracked above. |
 | Video playback in desktop players | Ubuntu GStreamer packages / Iris | ✅ | Showtime, the default player, plays H.264, H.265 and VP9 with hardware decoding and continues playback after seeking. |
 | Hardware video codecs | Qualcomm Iris | ✅ | Hardware decoding of H.264, H.265 and VP9 (the default player through GStreamer, Firefox through VA-API) and hardware encoding of H.264 and H.265. |
-| Front and rear cameras | SC820CS / SC1300CS | 🟡 | The default Camera app (Snapshot) supports preview and photos with both cameras. Automatic white balance uses a simple grey-world algorithm, so scenes dominated by one colour can look tinted. Lens-shading correction is absent, leaving darker corners. Focus is fixed at a distance, making close objects soft, and dim scenes are noisy. |
+| Front and rear cameras | SC820CS / SC1300CS | 🟡 | The default Camera app (Snapshot) supports preview and photos with both cameras. Automatic white balance uses a simple grey-world algorithm, so scenes dominated by one colour can look tinted. Lens-shading correction is absent, leaving darker corners. The dedicated rear-camera app supports centre and tap focus. Dim scenes are noisy. An app can repeatedly open the front camera in the same process. |
+| Torch | Dual LEDs | ✅ | Switch and adjust brightness in Quick Settings. |
 | Automatic rotation | SSC / iio-sensor-proxy | ✅ | With the keyboard detached, the screen follows the orientation in all four directions, each the right way up. With the keyboard attached it stays fixed, as on a laptop. |
-| Automatic brightness | SSC ambient light / GNOME | ✅ | The ambient-light sensor is integrated with GNOME. Enable Automatic Brightness in Settings → Power to adjust the backlight to ambient light; idle dimming and blanking follow Ubuntu defaults. |
+| Automatic brightness | SSC ambient light / GNOME | ✅ | The ambient-light sensor is integrated with GNOME. Enable Automatic Brightness in Settings → Power to adjust the backlight to ambient light; idle dimming and blanking follow Ubuntu defaults. Brightness follows the stock curve, and the brightness you set is kept across logout and restart. |
 | Compass and gyroscope | SSC / iio-sensor-proxy | ✅ | Heading and angular velocity are available over D-Bus and keep updating after suspend. |
 | Proximity | SSC | ❌ | The DSP does not publish the proximity sensor on this unit, and `libssc` has no SAR implementation. |
 
@@ -162,22 +161,33 @@ Features under development are not included in the supported feature set.
 
 | Feature | Component / Implementation | Status | Scope and limitations |
 |---|---|---|---|
-| Cover | Hall switch / logind | ✅ | Closing the keyboard cover or a case suspends the tablet within about a second; opening it wakes the tablet and lights up the screen. Touch input is ignored while the cover is closed. Closing and opening the cover does not wake a suspend entered with the cover open (for example through idle suspend); press the power button instead. |
+| Cover | Hall switch / logind | ✅ | On battery power, closing the keyboard cover or a case suspends the tablet within about a second; opening it wakes the tablet and lights up the screen. Touch input is ignored while the cover is closed. Closing and opening the cover does not wake a suspend entered with the cover open (for example through idle suspend); press the power button instead. |
 | Power button | Linux input / GNOME | ✅ | GNOME handles the key; its default action is to lock the screen and can be changed in Settings > Power. The old `power-key-action` files no longer apply. |
 | Volume keys | GPIO / PMIC PON input | ✅ | Volume up and down report `KEY_VOLUMEUP` and `KEY_VOLUMEDOWN`, respectively. |
 | CPU frequency and temperature | SCMI / IIO / thermal | 🟡 | Frequency scaling and temperature readings work. Sustained-load thermal control and enclosure-temperature management are incomplete. |
 | Battery reporting | qcom_battmgr / UPower | ✅ | Capacity and runtime estimates available; charging behavior is a separate limitation. |
-| Charging in Linux | USB power / vendor firmware / SC8547A charge pump | ✅ | A PPS charger fast-charges through the charge pump at up to about 39 W (below 80 % charge, battery between 12 and 44 °C); other PD chargers get the 9 V contract, up to 18 W input. On a computer's USB port (about 2.5 W) with the screen on, the battery still drains by about 2–3 % per hour. The stock SUPERVOOC protocol is not available. |
-| Suspend and resume | Linux power management | ✅ | Defaults to s2idle, with CX power collapse and DDR self-refresh. Cover, power-button and RTC wake are supported; Wi-Fi, keyboard and cameras remain usable after resume. The firmware-provided `deep` state is not used by default. See [System suspend](docs/SUSPEND.en.md). |
+| Charging in Linux | USB power / vendor firmware / SC8547A charge pump | ✅ | Compatible SUPERVOOC, UFCS and PPS chargers support fast charging from 0 °C to below 51 °C, including when connected at a high state of charge. Power follows cell temperature and voltage, tapering near full charge. Compatible PD and QC chargers support 9 V charging. While wired power is connected, the GNOME top bar shows net battery charging power and the active charging protocol. With a wired charger connected, locking the tablet or closing the cover turns off the screen. The system stays awake so fast charging can continue until full. It stays awake while the charger remains connected and resumes normal sleep behavior after unplugging. Pause charging from the charging menu to run directly from the charger. The setting survives restarts. |
+| Suspend and resume | Linux power management | ✅ | Defaults to s2idle, with CX power collapse and DDR self-refresh. Cover, power-button and RTC wake are supported; Wi-Fi, keyboard and cameras remain usable after resume. The firmware-provided `deep` state is not used by default. See [System suspend](docs/SUSPEND.en.md). Connecting a charging cable wakes the tablet. |
 | RTC | Qualcomm PMIC RTC | ✅ | Time read/write works. A forced reset loses the RTC time; it is set again once online. Certificate time checks do not block initial synchronization, and networks blocking authenticated time (NTS) use their own time server. Synchronized time is written back to the RTC and survives a normal restart. |
 | Snap applications | AppArmor / snapd / GPU content provider | 🟡 | Shared Adreno 830 graphics runtime; strict confinement remains affected by snapd feature detection. |
-| Android applications | Waydroid | 🟡 | Applications and networking with software rendering; Android Data Saver is unavailable. [Installation](docs/WAYDROID.en.md). |
+| Android applications | Waydroid | 🟡 | Applications and networking with Adreno 830 hardware rendering; Android Data Saver is unavailable. [Installation](docs/WAYDROID.en.md). |
 | Virtual machines | Gunyah / GunyahVM 1.1.0 | ✅ | Preinstalled virtual machine manager for ARM64 Linux guests. |
 | Hardware monitoring | Resources | ✅ | CPU, GPU and battery telemetry, with available temperature sensors. |
 
 ## Use and Maintenance
 
-Checks GitHub anonymously once a day for the latest release and notifies you when a newer version is available; this can be disabled in notification settings.
+Open Software Updater, or run `sudo apt update && sudo apt full-upgrade`. Restart after a kernel update.
+
+On an existing installation, run these commands once on the tablet, then restart.
+
+```sh
+wget -O erhai-archive-keyring_1.1_all.deb https://github.com/yzddmr6/onepluspad-2pro-mainline/releases/download/apt/erhai-archive-keyring_1.1_all.deb
+sudo apt install ./erhai-archive-keyring_1.1_all.deb
+sudo apt update && sudo apt full-upgrade
+```
+
+If the system fails to boot, reinstall using the [installation guide](docs/FLASHING.en.md).
+
 
 The base system comes from the official Ubuntu Desktop image. Device support is
 delivered as separate `erhai-*` packages; Ubuntu packages remain managed by APT.

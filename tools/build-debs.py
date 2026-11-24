@@ -98,6 +98,7 @@ import time
 import urllib.request
 from pathlib import Path
 
+from lib.app_center_input import stage_app_center
 from lib.abl_layout import (LayoutError, add_arguments as add_layout_arguments,
                             check_choice, sink_layout, vendor_boot_dtb)
 
@@ -459,6 +460,7 @@ def copy_tree(source, root):
 
 def stage_device_support(root):
     copy_tree(PACKAGING / 'erhai-device-support/tree', root)
+    copy_tree(PACKAGING / 'shared-charge', root)
     for program in SWITCHER_PROGRAMS:
         install_file(REPO / 'switch' / program, root / 'usr/sbin' / program, 0o755)
     # The store itself: the package owns the directory, never its contents.
@@ -991,8 +993,7 @@ def write_control(root, package, version, substitutions):
         docs.mkdir(parents=True, exist_ok=True)
         (docs / 'changelog.gz').write_bytes(gzip.compress(text.encode(), mtime=0))
     text = (PACKAGING / package_template(package) / 'control').read_text()
-    values = {'@VERSION@': version,
-              '@INSTALLED_SIZE@': str(installed_size_kib(root)), **substitutions}
+    values = {**substitutions, '@INSTALLED_SIZE@': str(installed_size_kib(root)), '@VERSION@': version}
     for key, value in values.items():
         text = text.replace(key, value)
     leftover = re.findall(r'@[A-Z_]+@', text)
@@ -1147,13 +1148,14 @@ def main():
                 release_file.parent.mkdir(parents=True, exist_ok=True)
                 release_file.write_text(args.release_version + '\n')
             elif package == 'erhai-release-notifier':
-                copy_tree(PACKAGING / 'release-notifier', root)
                 install_file(PACKAGING / package / 'copyright',
                              root / 'usr/share/doc' / package / 'copyright', 0o644)
             elif package == 'erhai-display-power':
                 stage_display_power(root)
             elif package in ('erhai-debug', 'erhai-firefox', 'erhai-snap-graphics', 'erhai-apps'):
                 copy_tree(PACKAGING / package / 'tree', root)
+                if package == 'erhai-apps':
+                    stage_app_center(root / 'usr/share/tablet-app-center')
             elif package == 'erhai-firmware':
                 stage_firmware(root, manifest, args.firmware_tree)
             elif package == 'erhai-settings':
@@ -1172,13 +1174,32 @@ def main():
                          '@DEBUG_DEPENDENCY@': ', erhai-debug (>= 0.1.0~)' if args.debug and kernel_meta else '',
                          '@MAINTAINER@': MAINTAINER}
 
+        cohort = json.loads((PACKAGING / 'desktop-packages.json').read_text())
+        locked_image, = (name for name in cohort if name.startswith('erhai-kernel-image-'))
+        if image_package:
+            del cohort[locked_image]
+            cohort[image_package] = '@VERSION@'
+        # Compute the build ID with a placeholder for members built together.
+        # Package versions for independently built components come from the release.
+        controls = {name: substitutions.copy() for name in roots}
+        if 'erhai-device-support' in roots:
+            controls['erhai-device-support']['@SELECTED_IMAGE@'] = image_package or locked_image
+        if 'erhai-device' in roots:
+            depends = []
+            for name, version in sorted(cohort.items()):
+                if name in roots:
+                    version = '@VERSION@'
+                relation = version if version.startswith('>= ') else '= ' + version
+                depends.append(f'{name} ({relation})')
+            controls['erhai-device']['@DESKTOP_DEPENDS@'] = ', '.join(depends)
+
         # One build id for the set, derived from everything the set contains:
         # the staged payloads and the DEBIAN templates behind them. Two builds
         # from the same inputs get the same id, and a changed byte anywhere --
         # a firmware file, a unit, a description -- produces a new one. It
         # identifies the build; packaging/VERSION is what orders it.
         payloads = {package: tree_digest(root) for package, root in roots.items()}
-        metadata = {package: metadata_digest(package, substitutions) for package in roots}
+        metadata = {package: metadata_digest(package, controls[package]) for package in roots}
         seed = ''.join(f'{package} payload {payloads[package]} '
                        f'metadata {metadata[package]}\n' for package in sorted(roots))
         build_id = hashlib.sha256(seed.encode()).hexdigest()[:8]
@@ -1193,7 +1214,7 @@ def main():
         built = []
         for package in roots:
             architecture = 'arm64' if package in ('erhai-kernel', 'erhai-device', 'erhai-display-power', 'erhai-settings', 'erhai-snap-graphics', image_package) else 'all'
-            write_control(roots[package], package, version, substitutions)
+            write_control(roots[package], package, version, controls[package])
             built.append(pack(roots[package], package, version, architecture, out_dir, epoch))
 
         summary = {

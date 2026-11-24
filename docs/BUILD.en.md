@@ -128,8 +128,7 @@ power-management initialization from completing and is not the normal build
 choice. Boot and package builders require explicit opt-in for that layout
 and record the selected layout in their manifests.
 
-The NCM profile provides a USB link (device `192.168.77.2`, telnet 2323,
-HTTP evidence on 8080) with a bounded recovery timer. Its recovery destination
+The NCM profile provides a USB link (device `192.168.77.2`) with a bounded recovery timer. Its recovery destination
 depends on the installed boot images; the host controller must also verify the
 return to Android. See [testing and recovery](FLASHING.en.md). Optional kernel cmdline flags: `erhai.watchdog=NN` (session length),
 `erhai.rootfs=<url>` with `erhai.rootfs.sha256=<digest>` (fetch and verify a
@@ -183,13 +182,13 @@ python3 tools/build-debs.py --release-version "$RELEASE_VERSION" --output out/de
 
 | Package | Owns |
 |---|---|
-| `erhai-device-support` | TuneD power-mode profiles and systemd-zram-generator configuration (see [daily-use policies](DAILY.en.md)); `/usr/sbin/erhai-switch{,-install-ubuntu-images}`, the store directory and its logrotate snippet, the "Switch to Android" desktop entry and its polkit action, the power-key service and lock policy (idle power settings follow Ubuntu defaults), and the two programs that give this unit its own Bluetooth and Wi-Fi addresses (`erhai-bt-address` with its units, `erhai-wifi-address` with its udev rule and NetworkManager drop-in), and the systemd hardware-watchdog policy: off by default, with an opt-in 30 s variant to copy into `/etc/systemd/system.conf.d/`. The addresses themselves live in `/var/lib/erhai/` and are in **no** package: they are machine-specific data, written on the tablet at first boot |
+| `erhai-device-support` | TuneD power-mode profiles, the real-time utilization-floor default (`sysctl.d`) and systemd-zram-generator configuration (see [daily-use policies](DAILY.en.md)); `/usr/sbin/erhai-switch{,-install-ubuntu-images}`, the store directory and its logrotate snippet, the "Switch to Android" desktop entry and its polkit action, the power-key service and lock policy (idle power settings follow Ubuntu defaults), and the two programs that give this unit its own Bluetooth and Wi-Fi addresses (`erhai-bt-address` with its units, `erhai-wifi-address` with its udev rule and NetworkManager drop-in), and the systemd hardware-watchdog policy: off by default, with an opt-in 30 s variant to copy into `/etc/systemd/system.conf.d/`. The addresses themselves live in `/var/lib/erhai/` and are in **no** package: they are machine-specific data, written on the tablet at first boot |
 | `erhai-kernel` | selects a versioned kernel payload; configuration activates its triplet through the switcher without rebooting |
 | `erhai-kernel-image-<release>` | matching signed boot images and configured modules; installation only populates files and runs `depmod`, allowing RAM validation before selection |
 | `erhai-firmware` | the firmware closure the mainline drivers ask for and the distribution does not ship under those names |
-| `erhai-audio` | the board AudioReach topology and UCM for the internal microphones; DisplayPort audio is disabled in the default profile, and internal speakers are enabled by default with a persistent opt-out (see [daily-use policies](DAILY.en.md)) |
+| `erhai-audio` | the board AudioReach topology and UCM for the internal microphones; DisplayPort playback follows connector availability, and internal speakers are enabled by default with a persistent opt-out (see [daily-use policies](DAILY.en.md)) |
 | `erhai-display-power` | the backlight power service, its socket and the GNOME 50 display-power adapter; it requires the kernel's single led-backlight device |
-| `erhai-debug` (optional) | USB diagnostic DHCP, HTTP and root-shell units, using Ubuntu's `busybox-static`; all units require `erhai.debug=1`. While installed, the kernel panics on a hung task, soft lockup or oops and reboots 10 s later |
+| `erhai-debug` (optional) | USB DHCP and key-only SSH for the development boot profile. Provision a host public key as described in the installation guide. |
 | `erhai-device` | a metapackage depending on the required device packages |
 
 The kernel build includes all configured modules and records their hashes.
@@ -199,7 +198,7 @@ with Kbuild's `modules_install`; the target's kmod generates dependency indices.
 Build/source symlinks into a developer workspace are excluded.
 
 Versioned payload packages coexist. The selector protects the running kernel
-and the switcher's current/previous selections from automatic package removal;
+and depends on the selected kernel payload;
 unreferenced kernels can be removed normally. Immutable kernel identity is kept
 in the store's `kernel.json`, separate from deployment information in `meta.json`.
 Module autoload, SCMI CPU frequency, installed upgrade and booting the previous
@@ -315,10 +314,9 @@ assembly container. The following example uses Bash.
 # packaging/mesa/shared/mesa/README.md
 python3 tools/build-sensors.py --output out/sensor-debs
 python3 tools/package-mesa.py --shared-package <piano-mesa.deb> \
-  --shared-repository <complete-common-batch> --release-id erhai-<release> \
-  --release-packages out/device-packages --release-packages out/sensor-debs \
-  --release-packages out/shared-apps --output out/mesa-debs
+  --output out/mesa-debs
 
+./tools/build-archive-debs.sh out/archive-debs
 args=()
 for deb in out/device-packages/*.deb out/mesa-debs/*.deb out/sensor-debs/*.deb out/shared-apps/*.deb; do
   args+=(--device-deb "$deb")
@@ -328,8 +326,10 @@ for deb in out/app-dependencies/*.deb; do
   args+=(--dependency-deb "$deb")
 done
 python3 tools/build-desktop-rootfs.py --layers "${ERHAI_WORKSPACE:-$PWD}/cache/ubuntu-desktop/casper" \
-  --release-repository out/mesa-debs/erhai-<release> --output out/desktop-root "${args[@]}"
+  --device-deb out/archive-debs/erhai-archive-keyring_1.1_all.deb --output out/desktop-root "${args[@]}"
 ```
+
+Record the selected project package versions in `packaging/desktop-packages.json` before building the desktop metapackage. Build the other components first. Use a minimum version (`>=`) for GunyahVM and its two Casilda packages so they can update independently. Other project packages use exact versions.
 
 Select one version of each desired device component, including the matching
 kernel selector and payload. The container has no network and uses kernel
@@ -367,10 +367,9 @@ Use `--layer-cache` to reuse read-only mounts of the original Ubuntu layers with
 
 Put the shared `piano-snap-graphics` provider, the Resources package pinned in
 [packaging/resources/source.json](../packaging/resources/source.json), and the
-`gunyahvm`, `gunyahvm-runtime`, `gunyahvm-guest-kernel`, `gunyahvm-guest-mesa`
-packages from [GunyahVM 1.0.1](https://github.com/yzddmr6/GunyahVM) into
-`out/shared-apps`. Release URLs, versions and SHA-256 values are pinned in
-[packaging/gunyahvm/source.json](../packaging/gunyahvm/source.json); product image assembly requires all four matching packages. The Snap provider must use the same pinned Mesa source as
+`gunyahvm` package from [GunyahVM](https://github.com/yzddmr6/GunyahVM) into
+`out/shared-apps`. Its release URL, version and SHA-256 are pinned in
+[packaging/gunyahvm/source.json](../packaging/gunyahvm/source.json); product image assembly requires the matching pinned package. The Snap provider must use the same pinned Mesa source as
 `packaging/mesa/shared/mesa/source.json`. Ubuntu dependencies for GunyahVM are
 already pinned in `packaging/desktop/source.json` and fetched by the assembler.
 Put any other additional Ubuntu dependency
@@ -398,20 +397,10 @@ The Snap provider retains its separate runtime.
 
 ```sh
 python3 tools/package-mesa.py --shared-package <piano-mesa.deb> \
-  --shared-repository <verified-common-batch> --release-id erhai-<release> \
-  --release-packages <other-release-packages> --output out/host-mesa-release
+  --output out/host-mesa-release
 ```
 
-`build-desktop-rootfs.py --release-repository BATCH` retains the complete batch
-and exposes packages not explicitly selected as dependencies to APT. Use
-`--device-deb` for transition and device packages; only needed dependencies are
-installed. Other archives can still use `--dependency-deb`. Explicit package
-hashes must match the batch. Ship the complete current and previous repositories
-with the release attachments.
-
-`install.py upgrade` retains exact preceding userspace versions and the boot set.
-`install.py rollback --product erhai` restores packages before calling the existing
-`erhai-switch-install-ubuntu-images`. See [UPGRADE](UPGRADE.en.md) for the order.
+Build the archive bootstrap with `./tools/build-archive-debs.sh out/archive-debs`. Pass `out/archive-debs/erhai-archive-keyring_1.1_all.deb` to the root image builder with `--device-deb` along with the selected project runtime packages.
 
 ## NPU runtime and offline demonstration
 
@@ -438,6 +427,6 @@ existing version.
 A kernel baseline change rebuilds matching kernel, modules and boot images;
 Piano also rebuilds its camera loopback module for that ABI. Always assemble
 and verify root images, complete APT batches and attachments from the final
-components. The GunyahVM 1.2.0 lock covers four application packages, two Casilda packages
-and nine system dependencies. Include all of them in the release repository. Updating the lock requires whole-release upgrade/rollback and application checks, but
+components. The GunyahVM 1.3.0 lock covers one application package, two Casilda packages
+and ten distribution dependencies. Include project builds in the signed archive and obtain distribution packages from Ubuntu. Updating the lock requires upgrade and application checks, but
 no Mesa compilation. Keep host Mesa and Snap build outputs separate.

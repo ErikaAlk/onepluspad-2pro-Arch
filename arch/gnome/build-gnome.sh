@@ -48,5 +48,5 @@ qemu-aarch64-static -L "$sysroot" "$sysroot/usr/bin/glib-compile-schemas" --stri
 cd "$output/payload"
 files=(usr/lib/gsd-media-keys usr/lib/gsd-power usr/lib/libmutter-51.so.0.0.0 usr/bin/gnome-control-center usr/share/glib-2.0/schemas/org.gnome.settings-daemon.enums.xml usr/share/glib-2.0/schemas/org.gnome.settings-daemon.plugins.power.gschema.xml)
 sha256sum "${files[@]}" > "$output/PAYLOAD_SHA256SUMS"
-tar -cJf "$output/gnome-51.1-power-fixes-aarch64.tar.xz" "${files[@]}"
+tar --mtime=@0 --owner=0 --group=0 -cJf "$output/gnome-51.1-power-fixes-aarch64.tar.xz" "${files[@]}"
 sha256sum "$output/gnome-51.1-power-fixes-aarch64.tar.xz"

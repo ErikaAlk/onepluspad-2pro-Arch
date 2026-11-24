@@ -1,0 +1,34 @@
+pkgname=gnome-shell
+epoch=1
+pkgver=51.1
+pkgrel=1.4
+pkgdesc='GNOME 桌面，支持内置屏幕亮度记忆与首次动画优化'
+arch=(aarch64)
+url=https://gitlab.gnome.org/GNOME/gnome-shell
+license=(GPL-3.0-or-later)
+groups=(gnome)
+depends=(accountsservice at-spi2-core bash cairo dconf gcr-4 gdk-pixbuf2 gjs glib2 glibc
+  gnome-autoar gnome-desktop-4 gnome-session gnome-settings-daemon graphene
+  gsettings-desktop-schemas gtk4 hicolor-icon-theme ibus json-glib libadwaita
+  libcanberra-pulse libgcc libgdm libglvnd libgweather-4 libibus libical libnm
+  libnma-gtk4 libpipewire libpulse libsecret libsoup3 libx11 libxext libxfixes
+  mutter pango polkit systemd-libs unzip upower webkitgtk-6.0 'libmutter-51.so=0-64')
+optdepends=('evolution-data-server: 日历集成' 'gnome-bluetooth-3.0: 蓝牙支持'
+  'gnome-control-center: 系统设置' 'gnome-disk-utility: 使用密钥文件挂载'
+  'gnome-extensions-app: 管理扩展' 'gst-plugin-pipewire: 屏幕录制'
+  'gst-plugins-good: 屏幕录制' 'power-profiles-daemon: 电源模式切换'
+  'python-gobject: GNOME性能测试工具' 'python-simplejson: GNOME性能测试工具'
+  'switcheroo-control: 多GPU支持')
+options=(!strip !debug)
+source=('gnome-shell-original.pkg.tar.xz::http://mirror.archlinuxarm.org/aarch64/extra/gnome-shell-1:51.1-1-aarch64.pkg.tar.xz'
+  libst-51.so libshell-51.so)
+noextract=(gnome-shell-original.pkg.tar.xz)
+sha256sums=(6f8a639aef13b2f6010da22c290f83aa0cade8f923236d6c417b9b3c4dfcfd7f
+  1de2282364f5d8362a83ca51aed627dfe7e5153fe0526dd1d637e79977727eb5
+  b9be064eabdfd015432ae7473c175a3ce32aa1030d33a0a81318dc98690b622f)
+
+package() {
+  bsdtar --no-same-owner -xf "$srcdir/gnome-shell-original.pkg.tar.xz" -C "$pkgdir" --exclude '.*'
+  install -m755 "$srcdir/libst-51.so" "$pkgdir/usr/lib/gnome-shell/libst-51.so"
+  install -m755 "$srcdir/libshell-51.so" "$pkgdir/usr/lib/gnome-shell/libshell-51.so"
+}

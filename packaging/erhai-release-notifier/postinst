@@ -2,5 +2,5 @@
 # SPDX-License-Identifier: MIT
 set -e
 if [ "$1" = configure ]; then
-    deb-systemd-helper --user enable mainline-release-notifier.timer >/dev/null
+    deb-systemd-helper --user purge mainline-release-notifier.timer >/dev/null
 fi
