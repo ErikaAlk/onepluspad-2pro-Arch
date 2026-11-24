@@ -32,8 +32,8 @@ if arguments.action == 'prepare':
     run(['git', 'clone', '--filter=blob:none', '--single-branch', '--branch', lock['baseline_tag'], lock['repository'], kernel])
     assert subprocess.check_output(['git', '-C', kernel, 'rev-parse', 'HEAD'], text=True).strip() == lock['baseline_commit']
     run(['git', '-C', kernel, 'bundle', 'verify', bundle])
-    run(['git', '-C', kernel, 'fetch', bundle, lock['bundle_ref'] + ':refs/heads/arch/v0.9.1'])
-    run(['git', '-C', kernel, 'switch', 'arch/v0.9.1'])
+    run(['git', '-C', kernel, 'fetch', bundle, lock['bundle_ref']])
+    run(['git', '-C', kernel, 'switch', '--detach', lock['custom_commit']])
 else:
     assert arguments.output is not None and arguments.jobs > 0
     assert subprocess.check_output(['git', '-C', kernel, 'rev-parse', 'HEAD'], text=True).strip() == lock['custom_commit']

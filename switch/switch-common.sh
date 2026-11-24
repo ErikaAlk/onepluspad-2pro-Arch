@@ -11,41 +11,6 @@ switch_bootconfig_slots() {
     }' "$1"
 }
 
-switch_battery() {
-    sb_root=$1
-    sb_min=101
-    for sb_supply in "$sb_root"/*; do
-        [ -d "$sb_supply" ] || continue
-        sb_type=$(cat "$sb_supply/type") || return 1
-        [ "$sb_type" = Battery ] || continue
-        if [ -e "$sb_supply/scope" ]; then
-            sb_scope=$(cat "$sb_supply/scope") || return 1
-            [ "$sb_scope" != Device ] || continue
-        fi
-        if [ -e "$sb_supply/present" ]; then
-            sb_present=$(cat "$sb_supply/present") || return 1
-            [ "$sb_present" = 1 ] || return 1
-        fi
-        sb_capacity=$(cat "$sb_supply/capacity") || return 1
-        case $sb_capacity in ''|*[!0-9]*|????*) return 1 ;; esac
-        [ "$sb_capacity" -le 100 ] || return 1
-        [ "$sb_capacity" -ge "$sb_min" ] || sb_min=$sb_capacity
-    done
-    [ "$sb_min" -le 100 ] || return 1
-    printf '%s\n' "$sb_min"
-}
-
-require_switch_battery() {
-    sb_path=/sys/class/power_supply
-    [ -z "$DEV_DIR" ] || sb_path=$DEV_DIR/power_supply
-    if ! sb_level=$(switch_battery "$sb_path"); then
-        die 'Cannot read battery charge. Switching requires at least 40%. 无法读取电量，切换需要至少 40%。'
-    fi
-    [ "$sb_level" -ge 40 ] ||
-        die "Battery $sb_level%; switching requires at least 40%. 电量不足，切换需要至少 40%。"
-    log "battery=$sb_level% (minimum 40%)"
-}
-
 # Preserve the command status and its stderr both for the caller and the log.
 # No pipeline around the command: tee must never hide a failed dd or reboot.
 run_logged() {
@@ -79,8 +44,3 @@ The tablet was not restarted. 平板未重启。
 Details / 详情: $STORE/switch.log" 0 0 0 || :
 }
 
-# Python callers use the same parser without sourcing shell functions.
-if [ "${1:-}" = --battery ]; then
-    switch_battery "$2"
-    exit $?
-fi

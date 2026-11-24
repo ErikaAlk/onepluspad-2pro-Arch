@@ -1,6 +1,7 @@
 post_install() {
   glib-compile-schemas /usr/share/glib-2.0/schemas
   systemctl daemon-reload
+  systemctl enable erhai-pen.service
   printf '%s\n' '请在新内核启动后启用 tuned.service、tuned-ppd.service、chronyd.service 和 erhai-cover.service。'
 }
 

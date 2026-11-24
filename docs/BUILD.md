@@ -165,10 +165,9 @@ dpkg-dev。先拉取清单固定的容器镜像。装配期间容器需要额外
 # packaging/mesa/shared/mesa/README.md
 python3 tools/build-sensors.py --output out/sensor-debs
 python3 tools/package-mesa.py --shared-package <piano-mesa.deb> \
-  --shared-repository <complete-common-batch> --release-id erhai-<release> \
-  --release-packages out/device-packages --release-packages out/sensor-debs \
-  --release-packages out/shared-apps --output out/mesa-debs
+  --output out/mesa-debs
 
+./tools/build-archive-debs.sh out/archive-debs
 args=()
 for deb in out/device-packages/*.deb out/mesa-debs/*.deb out/sensor-debs/*.deb out/shared-apps/*.deb; do
   args+=(--device-deb "$deb")
@@ -178,8 +177,10 @@ for deb in out/app-dependencies/*.deb; do
   args+=(--dependency-deb "$deb")
 done
 python3 tools/build-desktop-rootfs.py --layers "${ERHAI_WORKSPACE:-$PWD}/cache/ubuntu-desktop/casper" \
-  --release-repository out/mesa-debs/erhai-<release> --output out/desktop-root "${args[@]}"
+  --device-deb out/archive-debs/erhai-archive-keyring_1.1_all.deb --output out/desktop-root "${args[@]}"
 ```
+
+先构建组件，将本版默认安装的项目包版本写入 `packaging/desktop-packages.json`，最后构建桌面元包。 GunyahVM 和两个 Casilda 包填写最低版本（`>=`），支持单独更新。其余项目包填写精确版本。
 
 上述命令使用 Bash。输出包括 `rootfs.squashfs`、软件包列表、构建输入与日志。
 装配通过官方 APT 包加入运行依赖和设备组件，保留 Ubuntu 正常的软件源。
@@ -196,10 +197,9 @@ Mozilla 不再提供已钉住的版本时，改钉当前版本。
 ### v0.8.0 应用输入
 
 把共用 `piano-snap-graphics` 提供者、[固定的 Resources 包](../packaging/resources/source.json)，
-以及 [GunyahVM 1.0.1](https://github.com/yzddmr6/GunyahVM) 的 `gunyahvm`、
-`gunyahvm-runtime`、`gunyahvm-guest-kernel`、`gunyahvm-guest-mesa` 四包放进
-`out/shared-apps`。四包的发布 URL、版本与 SHA-256 固定在
-[packaging/gunyahvm/source.json](../packaging/gunyahvm/source.json)，产品镜像装配会检查四包齐全且内容匹配。Snap 提供者使用与 `packaging/mesa/shared/mesa/source.json` 一致的
+以及 [GunyahVM](https://github.com/yzddmr6/GunyahVM) 的 `gunyahvm` 包放进
+`out/shared-apps`。它的发布 URL、版本与 SHA-256 固定在
+[packaging/gunyahvm/source.json](../packaging/gunyahvm/source.json)，产品镜像装配会检查固定的包齐全且内容匹配。Snap 提供者使用与 `packaging/mesa/shared/mesa/source.json` 一致的
 Mesa 来源。GunyahVM 所需的 Ubuntu 依赖已钉在 `packaging/desktop/source.json`，由装配器获取。
 其他额外的 Ubuntu 依赖 deb 才放进 `out/app-dependencies`，每个包只留一个版本；
 从固定 Ubuntu snapshot 获取，并保留索引中的 URL 与 SHA-256。
@@ -220,18 +220,10 @@ Snap provider 继续使用既有独立运行时。
 
 ```sh
 python3 tools/package-mesa.py --shared-package <piano-mesa.deb> \
-  --shared-repository <verified-common-batch> --release-id erhai-<release> \
-  --release-packages <other-release-packages> --output out/host-mesa-release
+  --output out/host-mesa-release
 ```
 
-`build-desktop-rootfs.py --release-repository <批次目录>` 保留完整仓库并将其中未显式
-选择的包作为依赖提供给 APT。`--device-deb` 选择过渡包和设备包，只安装依赖需要的
-子集；其他依赖也可通过既有 `--dependency-deb` 提供。显式包须与批次哈希相同。
-发布附件同时包含整版仓库及上一批回退仓库。
-
-`install.py upgrade` 保存上一版精确用户态和启动组；
-`install.py rollback --product erhai` 先恢复包，再调用现有的
-`erhai-switch-install-ubuntu-images`。操作顺序见 [UPGRADE](UPGRADE.md)。
+用 `./tools/build-archive-debs.sh out/archive-debs` 构建源配置包。构建根镜像时，通过 `--device-deb` 传入 `out/archive-debs/erhai-archive-keyring_1.1_all.deb` 和所需项目运行时包。
 
 ## NPU 运行库和离线演示
 
@@ -252,6 +244,5 @@ CDSP 固件和原厂 DSP 运行文件已随仓库提供，正常构建不需要�
 
 内核基线变化只重建匹配的内核、模块与启动镜像组；小米还重建同 ABI 的相机
 loopback 模块。根镜像、整版 APT 仓库与附件始终用最终组件重新装配和校验。
-GunyahVM 1.2.0 的输入锁包含四个应用包、两个 Casilda 包和九个系统依赖。
-组装时将整组放入发布包池。换版时更新该组的源锁，再重跑整组升级、
-回退及应用门槛，无需重编 Mesa。宿主 Mesa 与 Snap 的构建输出目录分别保留。
+GunyahVM 1.3.0 的输入锁包含一个应用包、两个 Casilda 包和十个系统依赖。
+项目构建的包进签名源，发行版依赖从 Ubuntu 获取。换版时更新源锁，验证升级及应用功能，无需重编 Mesa。宿主 Mesa 与 Snap 的构建输出目录分别保留。

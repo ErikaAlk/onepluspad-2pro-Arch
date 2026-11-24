@@ -19,7 +19,7 @@ source=(http://mirror.archlinuxarm.org/aarch64/extra/mutter-51.1-1-aarch64.pkg.t
   gnome-51.1-power-fixes-aarch64.tar.xz)
 noextract=("${source[@]##*/}")
 sha256sums=(c3841fe96f964be72c4538a790dad8166d66b2feafe2aa23a325ddbfa84e2a3c
-  36b7bbe549c7117b1062d52fbb12822e1cebec74ea4d8d15166ddd81e545ffce)
+  f3f8ebbaac9966d74af93945333151bdd6cd0e0b636754170c37a209701c300a)
 
 package() {
   bsdtar --no-same-owner -xf "$srcdir/mutter-51.1-1-aarch64.pkg.tar.xz" -C "$pkgdir" --exclude '.*'

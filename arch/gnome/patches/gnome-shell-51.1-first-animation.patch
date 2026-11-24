@@ -1,0 +1,307 @@
+diff --git a/src/st/st-drawing-area.c b/src/st/st-drawing-area.c
+index e892ae4..6a5df66 100644
+--- a/src/st/st-drawing-area.c
++++ b/src/st/st-drawing-area.c
+@@ -49,6 +49,7 @@ struct _StDrawingAreaPrivate {
+   CoglBitmap *buffer;
+ 
+   gboolean dirty;
++  gboolean repaint_pending;
+   guint in_repaint : 1;
+ };
+ 
+@@ -62,6 +63,7 @@ enum
+ };
+ 
+ static guint st_drawing_area_signals [LAST_SIGNAL] = { 0 };
++static void st_drawing_area_emit_repaint (StDrawingArea *area);
+ 
+ static void
+ st_drawing_area_allocate (ClutterActor          *self,
+@@ -71,16 +73,24 @@ st_drawing_area_allocate (ClutterActor          *self,
+   StDrawingAreaPrivate *priv =
+       st_drawing_area_get_instance_private (ST_DRAWING_AREA (self));
+   ClutterActorBox content_box;
++  int width, height;
++  float scale_factor;
++  gboolean changed;
+ 
+-  priv->scale_factor = clutter_actor_get_resource_scale (self);
++  scale_factor = clutter_actor_get_resource_scale (self);
+ 
+   clutter_actor_set_allocation (self, box);
+   st_theme_node_get_content_box (theme_node, box, &content_box);
+ 
+-  priv->width = (int)(0.5 + content_box.x2 - content_box.x1);
+-  priv->height = (int)(0.5 + content_box.y2 - content_box.y1);
++  width = (int)(0.5 + content_box.x2 - content_box.x1);
++  height = (int)(0.5 + content_box.y2 - content_box.y1);
++  changed = priv->width != width || priv->height != height || priv->scale_factor != scale_factor;
++  priv->width = width;
++  priv->height = height;
++  priv->scale_factor = scale_factor;
+ 
+-  st_drawing_area_queue_repaint (ST_DRAWING_AREA (self));
++  if (changed)
++    st_drawing_area_queue_repaint (ST_DRAWING_AREA (self));
+ }
+ 
+ static void
+@@ -92,6 +102,16 @@ st_drawing_area_paint_node (ClutterActor        *actor,
+   StDrawingAreaPrivate *priv = st_drawing_area_get_instance_private (area);
+   ClutterPaintNode *node;
+ 
++  if (priv->width <= 0 || priv->height <= 0)
++    return;
++
++  if (priv->repaint_pending)
++    {
++      priv->repaint_pending = FALSE;
++      g_clear_object (&priv->buffer);
++      st_drawing_area_emit_repaint (area);
++    }
++
+   if (priv->buffer == NULL)
+     return;
+ 
+@@ -296,13 +316,8 @@ st_drawing_area_queue_repaint (StDrawingArea *area)
+ 
+   priv = st_drawing_area_get_instance_private (area);
+ 
+-  g_clear_object (&priv->buffer);
+-
+-  if (priv->width <= 0 || priv->height <= 0)
+-    return;
+-
++  priv->repaint_pending = TRUE;
+   clutter_actor_queue_redraw (CLUTTER_ACTOR (area));
+-  st_drawing_area_emit_repaint (area);
+ }
+ 
+ /**
+diff --git a/src/st/st-theme.c b/src/st/st-theme.c
+index 06d5c4f..45f32cf 100644
+--- a/src/st/st-theme.c
++++ b/src/st/st-theme.c
+@@ -68,6 +68,7 @@ struct _StTheme
+ 
+   GHashTable *stylesheets_by_file;
+   GHashTable *files_by_stylesheet;
++  GHashTable *selector_candidates;
+ 
+   CRCascade *cascade;
+ };
+@@ -117,6 +118,9 @@ st_theme_init (StTheme *theme)
+   theme->stylesheets_by_file = g_hash_table_new_full (g_file_hash, (GEqualFunc) g_file_equal,
+                                                       (GDestroyNotify)g_object_unref, (GDestroyNotify)cr_stylesheet_unref);
+   theme->files_by_stylesheet = g_hash_table_new (g_direct_hash, g_direct_equal);
++  theme->selector_candidates = g_hash_table_new_full (g_bytes_hash, g_bytes_equal,
++                                                     (GDestroyNotify) g_bytes_unref,
++                                                     (GDestroyNotify) g_array_unref);
+ }
+ 
+ static void
+@@ -315,6 +319,7 @@ st_theme_unload_stylesheet (StTheme    *theme,
+     return;
+ 
+   theme->custom_stylesheets = g_slist_remove (theme->custom_stylesheets, stylesheet);
++  g_hash_table_remove_all (theme->selector_candidates);
+ 
+   g_signal_emit (theme, signals[STYLESHEETS_CHANGED], 0);
+ 
+@@ -387,6 +392,7 @@ st_theme_finalize (GObject * object)
+   g_slist_foreach (theme->custom_stylesheets, (GFunc) cr_stylesheet_unref, NULL);
+   g_clear_slist (&theme->custom_stylesheets, NULL);
+ 
++  g_hash_table_destroy (theme->selector_candidates);
+   g_hash_table_destroy (theme->stylesheets_by_file);
+   g_hash_table_destroy (theme->files_by_stylesheet);
+ 
+@@ -856,6 +862,85 @@ done:
+   return CR_OK;
+ }
+ 
++typedef struct
++{
++  CRStatement *statement;
++  CRSelector *selector;
++} SelectorCandidate;
++
++#ifdef ST_VERIFY_SELECTOR_CACHE
++static gboolean verify_unfiltered;
++#endif
++
++static GArray *
++get_selector_candidates (StTheme      *theme,
++                         CRStyleSheet *sheet,
++                         StThemeNode  *node)
++{
++  const char *empty[] = { NULL };
++  GStrv classes = st_theme_node_get_element_classes (node);
++  GStrv pseudo_classes = st_theme_node_get_pseudo_classes (node);
++  g_autoptr (GVariant) fields = NULL;
++  g_autoptr (GBytes) key = NULL;
++  GArray *candidates;
++  CRStatement *statement;
++  gboolean filtered = TRUE;
++
++#ifdef ST_VERIFY_SELECTOR_CACHE
++  filtered = !verify_unfiltered;
++#endif
++
++  fields = g_variant_ref_sink (g_variant_new ("(ttms^as^as)",
++                                            (guint64) (guintptr) sheet,
++                                            (guint64) st_theme_node_get_element_type (node),
++                                            st_theme_node_get_element_id (node),
++                                            classes ? (const char * const *) classes : empty,
++                                            pseudo_classes ? (const char * const *) pseudo_classes : empty));
++  key = g_variant_get_data_as_bytes (fields);
++  candidates = filtered ? g_hash_table_lookup (theme->selector_candidates, key) : NULL;
++  if (candidates)
++    return g_array_ref (candidates);
++
++  /* 限制缓存容量；遍历方持有引用，导入期间清理缓存不会释放正在使用的列表。 */
++  if (filtered && g_hash_table_size (theme->selector_candidates) >= 2048)
++    g_hash_table_remove_all (theme->selector_candidates);
++
++  candidates = g_array_new (FALSE, FALSE, sizeof (SelectorCandidate));
++  for (statement = sheet->statements; statement; statement = statement->next)
++    {
++      if (statement->type == AT_IMPORT_RULE_STMT)
++        {
++          SelectorCandidate entry = { statement, NULL };
++          g_array_append_val (candidates, entry);
++        }
++      else if (statement->type == RULESET_STMT && statement->kind.ruleset)
++        {
++          CRSelector *selector;
++          for (selector = statement->kind.ruleset->sel_list; selector; selector = selector->next)
++            {
++              gboolean matches = FALSE;
++              enum CRStatus status;
++
++              if (!selector->simple_sel)
++                continue;
++              status = CR_OK;
++              matches = TRUE;
++              if (filtered)
++                status = sel_matches_style_real (theme, selector->simple_sel, node,
++                                                 &matches, TRUE, FALSE);
++              if (status == CR_OK && matches)
++                {
++                  SelectorCandidate entry = { statement, selector };
++                  g_array_append_val (candidates, entry);
++                }
++            }
++        }
++    }
++  if (filtered)
++    g_hash_table_insert (theme->selector_candidates, g_bytes_ref (key), g_array_ref (candidates));
++  return candidates;
++}
++
+ static void
+ add_matched_properties (StTheme      *a_this,
+                         CRStyleSheet *a_nodesheet,
+@@ -867,6 +952,7 @@ add_matched_properties (StTheme      *a_this,
+   CRSelector *cur_sel = NULL;
+   gboolean matches = FALSE;
+   enum CRStatus status = CR_OK;
++  g_autoptr (GArray) candidates = get_selector_candidates (a_this, a_nodesheet, a_node);
+ 
+   /*
+    *walk through the list of statements and,
+@@ -874,8 +960,10 @@ add_matched_properties (StTheme      *a_this,
+    *contain some, and try to match our style node in these
+    *selectors lists.
+    */
+-  for (cur_stmt = a_nodesheet->statements; cur_stmt; cur_stmt = cur_stmt->next)
++  for (guint index = 0; index < candidates->len; index++)
+     {
++      SelectorCandidate *candidate = &g_array_index (candidates, SelectorCandidate, index);
++      cur_stmt = candidate->statement;
+       /*
+        *initialize the selector list in which we will
+        *really perform the search.
+@@ -891,7 +979,7 @@ add_matched_properties (StTheme      *a_this,
+         case RULESET_STMT:
+           if (cur_stmt->kind.ruleset && cur_stmt->kind.ruleset->sel_list)
+             {
+-              sel_list = cur_stmt->kind.ruleset->sel_list;
++              sel_list = candidate->selector;
+             }
+           break;
+ 
+@@ -952,7 +1040,7 @@ add_matched_properties (StTheme      *a_this,
+        *let's walk it and try to match the style node
+        *on each item of the list.
+        */
+-      for (cur_sel = sel_list; cur_sel; cur_sel = cur_sel->next)
++      for (cur_sel = sel_list; cur_sel; cur_sel = NULL)
+         {
+           if (!cur_sel->simple_sel)
+             continue;
+@@ -1052,6 +1140,33 @@ _st_theme_get_matched_properties (StTheme        *theme,
+    * after earlier declarations */
+   g_ptr_array_sort (props, compare_declarations);
+ 
++#ifdef ST_VERIFY_SELECTOR_CACHE
++  if (!verify_unfiltered)
++    {
++      g_autoptr (GPtrArray) reference = NULL;
++      g_autoptr (GArray) specificity = g_array_new (FALSE, FALSE, sizeof (gulong));
++
++      for (guint index = 0; index < props->len; index++)
++        {
++          CRDeclaration *declaration = g_ptr_array_index (props, index);
++          gulong value = declaration->parent_statement->specificity;
++          g_array_append_val (specificity, value);
++        }
++      /* 对比原始完整扫描的声明顺序、重复次数与最终specificity。 */
++      verify_unfiltered = TRUE;
++      reference = _st_theme_get_matched_properties (theme, node);
++      verify_unfiltered = FALSE;
++      g_assert_cmpuint (props->len, ==, reference->len);
++      for (guint index = 0; index < props->len; index++)
++        {
++          CRDeclaration *declaration = g_ptr_array_index (props, index);
++          g_assert_true (declaration == g_ptr_array_index (reference, index));
++          g_assert_cmpuint (g_array_index (specificity, gulong, index), ==,
++                            declaration->parent_statement->specificity);
++        }
++    }
++#endif
++
+   return props;
+ }
+ 
+diff --git a/src/st/st-widget.c b/src/st/st-widget.c
+index f94d3a7..cd0e527 100644
+--- a/src/st/st-widget.c
++++ b/src/st/st-widget.c
+@@ -1686,7 +1686,10 @@ st_widget_recompute_style (StWidget        *widget,
+     ? 0
+     : st_theme_node_get_transition_duration (new_theme_node);
+ 
+-  paint_equal = st_theme_node_paint_equal (old_theme_node, new_theme_node);
++  /* 延迟更新时用实际绘制缓存的节点比较，保留绘制属性相同的资源。 */
++  paint_equal = st_theme_node_paint_equal (old_theme_node ? old_theme_node
++                                                       : current_paint_state (widget)->node,
++                                         new_theme_node);
+ 
+   settings = st_settings_get ();
+   g_object_get (settings, "enable-animations", &animations_enabled, NULL);
+@@ -1759,8 +1762,12 @@ st_widget_ensure_style (StWidget *widget)
+ 
+   if (priv->is_style_dirty)
+     {
++      gboolean has_current_theme_node = priv->theme_node != NULL;
++
+       st_widget_recompute_style (widget, NULL, STYLE_CHANGE_FLAGS_NONE);
+-      notify_children_of_style_change (CLUTTER_ACTOR (widget), STYLE_CHANGE_FLAGS_NONE);
++      // 已懒建的节点属于当前样式，后代已经使用它，无需再次失效。
++      if (!has_current_theme_node)
++        notify_children_of_style_change (CLUTTER_ACTOR (widget), STYLE_CHANGE_FLAGS_NONE);
+     }
+ }
+ 

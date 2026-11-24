@@ -1,6 +1,6 @@
 # GNOME 51.1 平板电源修复
 
-本目录包含 Arch Linux ARM 的三个同名升级包配方、已验证补丁与交叉构建入口。升级版本为 `51.1-1.1`，保留官方包的全部文件、依赖、备份路径和软件包归属；只替换 Mutter 库、两个 GSD 程序、控制中心程序及两份 GSD schema。
+本目录维护 GNOME 51.1 的 Arch Linux ARM 软件包。v0.12.2 中的设置服务 `51.1-1.2` 读取原厂亮度曲线，Shell `1:51.1-1.4` 保存内置屏幕亮度。
 
 ## 源码准备
 
@@ -10,7 +10,9 @@
 - `gnome-settings-daemon-51.1.tar.xz` 与 `gnome-settings-daemon-51.1/`
 - `gnome-control-center-51.1.tar.xz` 与 `gnome-control-center-51.1/`
 
-下载位置为 `https://download.gnome.org/sources/<组件>/51/`，原始压缩包哈希固定在 `SOURCE_SHA256SUMS`。在各源码目录应用对应补丁：GSD 使用 `gsd-51.1-power-lock-ambient.patch`；控制中心使用 `gcc-51.1-power-lock.patch`；Mutter 使用三个 `mutter-51.1-*.patch`。源码准备使用文件编辑工具；构建入口只读取源码，不自动改写源文件。
+下载位置为 `https://download.gnome.org/sources/<组件>/51/`，原始压缩包哈希固定在 `SOURCE_SHA256SUMS`。GSD 依次应用 `gsd-51.1-power-lock-ambient.patch` 和 `gsd-51.1-absolute-curve.patch`，控制中心使用 `gcc-51.1-power-lock.patch`，Mutter 使用三个 `mutter-51.1-*.patch`。
+
+Shell 使用 GNOME 官方 51.1 提交 `33da06854e229c256afd5872fedd83c28cbfa176`。应用 `patches/shell-51.1-brightness-no-edid.patch` 和上游目录 `packaging/shared-gnome/shared/ubuntu/gnome-shell/brightness-auto-first-run.patch`。在 ARM64 上以 Meson 的 `release` 配置构建 `src/libshell-51.so`，安装目录为 `/usr/lib/gnome-shell`，使用与发行版一致的 RUNPATH `/usr/lib/mutter-51:/usr/lib/gnome-shell`。配方保留本机动画版 `libst-51.so`，该库与原包均按 SHA-256 核对。GSD 的 `gsd-power` 安装后应能通过 `ldd /usr/lib/gsd-power` 找到 `/usr/lib/gnome-settings-daemon-51/libgsd.so`。
 
 `verify-sources.py` 读取八个修改后源文件并统一换行后计算哈希，检查它们与已验证内容一致；不会写入或转换源文件。其他源码文件应保持官方压缩包内容。
 

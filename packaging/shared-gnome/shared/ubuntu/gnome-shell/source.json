@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "base_version": "50.1-0ubuntu1.5",
+  "local_version": "50.1-0ubuntu1.5+piano3",
+  "files": [
+    {
+      "file": "gnome-shell_50.1.orig.tar.xz",
+      "url": "https://snapshot.ubuntu.com/ubuntu/20261113T000000Z/pool/main/g/gnome-shell/gnome-shell_50.1.orig.tar.xz",
+      "sha256": "1b47760172c14f3f4edd1c9aff365f4de45583517bf0f80df4d3acbd4e4cb294",
+      "bytes": 2325080
+    },
+    {
+      "file": "gnome-shell_50.1-0ubuntu1.5.debian.tar.xz",
+      "url": "https://snapshot.ubuntu.com/ubuntu/20261113T000000Z/pool/main/g/gnome-shell/gnome-shell_50.1-0ubuntu1.5.debian.tar.xz",
+      "sha256": "a2f9896dd3e440a7cefe10df9d40ca4fd2023a04b9a9ab824ccbb7cacc2a7bd7",
+      "bytes": 159168
+    },
+    {
+      "file": "gnome-shell_50.1-0ubuntu1.5.dsc",
+      "url": "https://snapshot.ubuntu.com/ubuntu/20261113T000000Z/pool/main/g/gnome-shell/gnome-shell_50.1-0ubuntu1.5.dsc",
+      "sha256": "414cba88e963b20ecbb7cf6d3e317888aec95f14588b68e2dae04b4e1e3d57fc",
+      "bytes": 4164
+    }
+  ],
+  "authentication": {
+    "chain": "Ubuntu Archive InRelease -> Sources SHA256 -> DSC/orig/debian archives SHA256",
+    "inrelease_url": "https://snapshot.ubuntu.com/ubuntu/20261113T000000Z/dists/resolute-updates/InRelease",
+    "inrelease_sha256": "8ff67b04c340fca2f70fb591bc0683afb61ce3cd6aa27a7663dafeeaf1576a3f",
+    "sources_url": "https://snapshot.ubuntu.com/ubuntu/20261113T000000Z/dists/resolute-updates/main/source/Sources.xz",
+    "sources_sha256": "65ceb3886408dc6b361946e2d3b318075628b851fd44cd4a328406ace91223fe",
+    "archive_key_fingerprint": "F6ECB3762474EDA9D21B7022871920D1991BC93C",
+    "keyring_sha256": "80a36b0a6de2f69f49d2df75ef473ccde121e9e190b9ea01d20a4f63778d5c31",
+    "dsc_maintainer_signature": "Not separately verified"
+  },
+  "state": "AUTHENTICATED_PATCHED_SOURCE_BINARY_BUILT",
+  "patches": [
+    {
+      "file": "brightness-persist.patch",
+      "sha256": "f01dca47f34e9f43334a415f3c9150efd9a936c79934d2767c3a2eeb6c408145",
+      "license": "GPL-2.0-or-later",
+      "upstream": "https://gitlab.gnome.org/GNOME/gnome-shell/-/commit/29c61c40370cbfbeec1684ebf003104b20374bb4"
+    },
+    {
+      "file": "brightness-auto-first-run.patch",
+      "sha256": "e494869a2daa7136554937b5443371780c380f956d17f0db650fe8b06cd56575",
+      "license": "GPL-2.0-or-later"
+    },
+    {
+      "file": "brightness-no-edid.patch",
+      "sha256": "420d8e23d28971a7f6bd71682a6add22bf065366edd3cc2fb97e905fb4417a0a",
+      "license": "GPL-2.0-or-later"
+    }
+  ],
+  "changelog_entry_sha256": "34fa546221f868b262084d7da3e65d4c7e76679ec2109be658c3083f3fe76bf0",
+  "exit_condition": "Drop brightness-persist.patch when Ubuntu moves to gnome-shell 51 or later, or backports MR !4006 to 50.x. Drop brightness-auto-first-run.patch once upstream handles where automatic brightness starts on a monitor without a saved value, and brightness-no-edid.patch once upstream saves the brightness of a panel without an EDID. Until then, rebuild on every Ubuntu gnome-shell update and repeat the logout, login and reboot brightness check on both tablets."
+}

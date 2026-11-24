@@ -1,5 +1,10 @@
 # Changelog
 
+## Arch v0.12.2
+
+- 同步上游充电、Wi-Fi、USB、电源模式和笔支持，升级 GunyahVM 和 GNOME 自动亮度适配。
+- OPD2413 从内部存储启动通过，宿主和 Waydroid 图形、前后摄采集已验证。详见 [Arch v0.12.2 更新说明](docs/ARCH-UPSTREAM-v0.12.2.zh-CN.md)。
+
 ## Arch v0.9.1
 
 - 同步上游 v0.6.0 之后的功能与修复，升级 Linux 7.4-rc2，保留 GNOME 51.1 与精调外观。

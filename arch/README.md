@@ -4,9 +4,8 @@
 
 可选桌面组件在 [`appearance/`](appearance/)，保存两个改版扩展的固定来源、共享玻璃实现、原始参数和安装启停入口。使用方式见 [外观说明](../docs/APPEARANCE.zh-CN.md)。
 
-内核基线：`v0.9.1` / `29eda7337ed1af7316ea93ea73465b10f8ebeaff`。
-定制内核：`2fcc524a06da1bcd8d5937dd48fa7660d14e9155`。
+内核基线为 `v0.12.2`（`658c139dd9f3f51acd019545febb65f7a7956be2`）。Arch 定制提交为 `1b9526dfda28eb9b8790ab7e36ccc62207d463de`。
 
-`kernel-custom.bundle` 保存原提交、合并关系与全部本地修改，包含 UFCS、CCI/DMA 安全修复、gen4 帧尾填充和 ASoC 组件计数修复。完整配置启用 Rust Binder；Rust、bindgen 与 libclang 输入由 `kernel/rust-toolchain.json` 固定。Git bundle 需要上游基线历史，核验与取回均使用 Git 原生命令。
+`kernel-custom.bundle` 保存相机 DMA、流关闭顺序和 ASoC 组件计数修复。充电驱动及设备树直接采用上游版本。完整配置启用 Rust Binder，Rust、bindgen 与 libclang 由 `kernel/rust-toolchain.json` 固定。
 
-v0.9.1 的组件、构建入口和验证范围见[更新说明](../docs/ARCH-UPSTREAM-v0.9.1.zh-CN.md)。图形构建入口在 `graphics/`，GNOME51.1修复入口在 `gnome/`。
+v0.12.2 的组件和验证范围见 [更新说明](../docs/ARCH-UPSTREAM-v0.12.2.zh-CN.md)。图形构建入口在 `graphics/`，GNOME 51.1 适配在 `gnome/`。

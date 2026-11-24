@@ -1,6 +1,6 @@
 pkgname=gnome-settings-daemon
 pkgver=51.1
-pkgrel=1.1
+pkgrel=1.2
 pkgdesc='GNOME 设置服务，包含电源按钮锁屏与零照度调节'
 arch=(aarch64)
 url=https://gitlab.gnome.org/GNOME/gnome-settings-daemon
@@ -17,7 +17,7 @@ source=(http://mirror.archlinuxarm.org/aarch64/extra/gnome-settings-daemon-51.1-
   gnome-51.1-power-fixes-aarch64.tar.xz)
 noextract=("${source[@]##*/}")
 sha256sums=(2398ce0b78923eb42f2bf755dbb322a1d3e6ab185e53005f1e5e90278bb074cc
-  36b7bbe549c7117b1062d52fbb12822e1cebec74ea4d8d15166ddd81e545ffce)
+  f3f8ebbaac9966d74af93945333151bdd6cd0e0b636754170c37a209701c300a)
 
 package() {
   bsdtar --no-same-owner -xf "$srcdir/gnome-settings-daemon-51.1-1-aarch64.pkg.tar.xz" -C "$pkgdir" --exclude '.*'

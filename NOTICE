@@ -67,6 +67,8 @@ Root filesystems include Mozilla's Firefox package unmodified; it retains
 Mozilla's licenses and trademark terms. The Mozilla APT configuration in
 packaging/erhai-firefox is based on TheMojoMan's oneplus-erhai-ubuntu:
 https://github.com/TheMojoMan/oneplus-erhai-ubuntu
+The browser MIME defaults follow the Xiaomi Pad 8 Pro integration.
+https://github.com/yzddmr6/xiaomipad-8pro-mainline/blob/c9d5a315e9ac4f892607875b48f81a0b139a2a21/packaging/piano-ubuntu-desktop/etc/xdg/mimeapps.list
 
 Firmware and device data
 -----------------------
@@ -180,4 +182,6 @@ BSD-3-Clause 许可证。GunyahVM、Casilda 及私有运行依赖保留原包版
 其来源与校验值分别保存在 packaging/gunyahvm/source.json 和 Arch PKGBUILD。
 
 arch/kernel-custom.bundle 保存 Arch 定制内核提交与原作者信息，内核文件的
-SPDX 许可继续适用；其中 ASoC 组件计数修复与 CAMSS、UFCS 修改均保留在 Git 历史。
+SPDX 许可继续适用。v0.12.2 的 Arch 定制提交保留 ASoC 组件计数与 CAMSS 修复。
+自动亮度曲线及无 EDID 面板补丁来自上游 v0.12.2 的 shared-gnome 目录，
+保留 GreenTeodoro839、yzddmr6 等作者的信息，Arch 适配用于 GNOME 51.1。

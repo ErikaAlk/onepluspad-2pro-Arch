@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 set -e
 
-BT_UNITS='erhai-bt-address-generate.service erhai-bt-address.service'
+BT_UNITS='erhai-bt-address-generate.service erhai-bt-address.service erhai-pen.service'
 WIFI_UNITS='erhai-wifi-address-generate.service'
 CHASSIS_UNIT=erhai-chassis.service
 IDENTITY_UNIT=erhai-physical-platform.service
@@ -22,6 +22,8 @@ fi
 
 case "$1" in
 remove | purge)
+	rm -- /var/lib/tablet-charge/behaviour 2>/dev/null || true
+	rmdir /var/lib/tablet-charge 2>/dev/null || true
 	# Do not leave TuneD pointing at a profile whose package was removed.
 	# Its own state API also works during offline rootfs maintenance.
 	if command -v tuned-adm >/dev/null 2>&1; then
@@ -75,25 +77,32 @@ esac
 case "$1" in
 remove)
 	if command -v deb-systemd-helper >/dev/null 2>&1; then
-		for unit in $BT_UNITS $WIFI_UNITS $CHASSIS_UNIT $IDENTITY_UNIT $COVER_UNIT; do
+		for unit in $BT_UNITS $WIFI_UNITS $CHASSIS_UNIT $IDENTITY_UNIT $COVER_UNIT tablet-charge-sample.timer tablet-charge-events.service; do
 			deb-systemd-helper mask "$unit" >/dev/null 2>&1 || true
 		done
 	fi
+	# The Esc keymap entry lives in the compiled hwdb database; drop it
+	# with the file before the next add event.
+	if command -v systemd-hwdb >/dev/null 2>&1; then
+		systemd-hwdb update >/dev/null 2>&1 || true
+	fi
 	if command -v udevadm >/dev/null 2>&1; then
-		udevadm control --reload-rules >/dev/null 2>&1 || true
+		udevadm control --reload >/dev/null 2>&1 || true
 	fi
 	;;
 purge)
+	rm -- /var/lib/tablet-charge/behaviour 2>/dev/null || true
+	rmdir /var/lib/tablet-charge 2>/dev/null || true
 	if command -v deb-systemd-helper >/dev/null 2>&1; then
 		deb-systemd-helper purge erhai-power-key@.service >/dev/null 2>&1 || true
 		deb-systemd-helper unmask erhai-power-key@.service >/dev/null 2>&1 || true
-		for unit in $BT_UNITS $WIFI_UNITS $CHASSIS_UNIT $IDENTITY_UNIT $COVER_UNIT; do
+		for unit in $BT_UNITS $WIFI_UNITS $CHASSIS_UNIT $IDENTITY_UNIT $COVER_UNIT tablet-charge-sample.timer tablet-charge-events.service; do
 			deb-systemd-helper purge "$unit" >/dev/null 2>&1 || true
 			deb-systemd-helper unmask "$unit" >/dev/null 2>&1 || true
 		done
 	elif command -v systemctl >/dev/null 2>&1; then
 		# shellcheck disable=SC2086
-		systemctl disable --quiet $BT_UNITS $WIFI_UNITS $CHASSIS_UNIT $IDENTITY_UNIT $COVER_UNIT || true
+		systemctl disable --quiet $BT_UNITS $WIFI_UNITS $CHASSIS_UNIT $IDENTITY_UNIT $COVER_UNIT tablet-charge-sample.timer tablet-charge-events.service || true
 	fi
 	;;
 esac

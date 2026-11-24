@@ -19,6 +19,6 @@ for component in mutter gnome-settings-daemon gnome-control-center; do
   cp "$cache/$component-51.1-1-aarch64.pkg.tar.xz" "$build/"
   cp "$payload" "$build/gnome-51.1-power-fixes-aarch64.tar.xz"
   cd "$build"
-  makepkg --nodeps --force --noconfirm
+  makepkg --config "$script_dir/../config/makepkg-aarch64.conf" --nodeps --force --noconfirm
 done
 sha256sum "$output/packages/"*.pkg.tar.*

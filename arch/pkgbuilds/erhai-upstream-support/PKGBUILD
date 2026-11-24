@@ -1,23 +1,24 @@
 pkgname=erhai-upstream-support
-pkgver=0.9.1
+pkgver=0.12.2
 pkgrel=1
 pkgdesc='一加平板 2 Pro 电源策略、相机调校、联网校时与压缩交换空间'
 arch=(any)
 url=https://github.com/ErikaAlk/onepluspad-2pro-Arch
 license=(GPL-2.0-only)
-depends=(python python-gobject chrony systemd mkinitcpio networkmanager tuned-ppd zram-generator)
+depends=(python python-gobject python-pyudev bluez chrony systemd mkinitcpio networkmanager tuned-ppd zram-generator)
+depends+=(python-numpy gtk4 gst-plugin-libcamera gst-plugin-gtk4 gst-plugins-good)
 backup=(etc/chrony-erhai.conf etc/systemd/logind.conf.d/95-erhai-lid.conf etc/tuned/erhai-ppd.conf)
 options=(!strip)
 install=erhai-upstream-support.install
 source=(
-  erhai-arch-v0.9.1.tar.gz
+  erhai-arch-v0.12.2.tar.gz
   chrony.conf erhai-cover.service 90-erhai-power.conf mkinitcpio.conf chronyd-erhai.conf
   90-erhai-chrony-dhcp
   90_erhai-power.gschema.override
   cleanup-tuned.py
 )
 sha256sums=(
-  68a85a7104f306d4d6234e9f2eb3ef0ec41ee105b9bd5f928e25008a92e2c2b0
+  f64bd2e3513b3af8c5f1bd9b2e3bddf41fe8467bbbb969a647173fbc1e9169fb
   948c6fb879d69ed581fd2b618681f7e874b56f29a950a7c611bc5f11990c794a
   add6ef7561f7c69b7ef1df16286af1fd01431cb910662546aa41a166a784da52
   cb81e1c2c74ea3f0f1d9200a18304b0fea68b9d7b2567d7202e312fd2450b720
@@ -29,20 +30,26 @@ sha256sums=(
 )
 
 package() {
-  local upstream=onepluspad-2pro-mainline-0.9.1/packaging
+  local upstream=onepluspad-2pro-mainline-0.12.2/packaging
   local tree=$upstream/erhai-device-support/tree
   local relative
   for relative in \
     etc/tuned/erhai-ppd.conf \
     usr/lib/systemd/system/tuned-ppd.service.d/50-erhai-profiles.conf \
     usr/lib/systemd/zram-generator.conf.d/50-erhai.conf \
-    usr/lib/systemd/logind.conf.d/95-tablet-charge.conf \
+    usr/lib/sysctl.d/50-erhai-uclamp.conf \
+    usr/lib/systemd/system/erhai-pen.service \
+    usr/lib/udev/hwdb.d/99-erhai-pogo-esc.hwdb \
+    usr/share/libinput/31-erhai-pogo-keyboard.quirks \
+    usr/share/applications/io.github.erhai.FocusCamera.desktop \
+    usr/share/gnome-shell/extensions/erhai-torch@erhai.local/extension.js \
+    usr/share/gnome-shell/extensions/erhai-torch@erhai.local/metadata.json \
+    usr/share/gnome-settings-daemon/ambient-brightness-curve \
     usr/lib/tuned/profiles/erhai-balanced/tuned.conf \
     usr/lib/tuned/profiles/erhai-performance/tuned.conf \
     usr/lib/tuned/profiles/erhai-power-saver/tuned.conf \
     usr/lib/udev/rules.d/80-erhai-charge-limit.rules \
     usr/lib/udev/rules.d/90-erhai-internal-storage.rules \
-    usr/share/glib-2.0/schemas/95_tablet-charge.gschema.override \
     usr/share/glib-2.0/schemas/io.github.yzddmr6.erhai.desktop.gschema.xml \
     usr/share/libcamera/ipa/simple/sc1300cs.yaml \
     usr/share/libcamera/ipa/simple/sc820cs.yaml \
@@ -50,6 +57,12 @@ package() {
     etc/xdg/autostart/erhai-gunyahvm-favorite.desktop; do
     install -Dm644 "$tree/$relative" "$pkgdir/$relative"
   done
+  for relative in usr/lib/systemd/logind.conf.d/95-tablet-charge.conf usr/share/glib-2.0/schemas/95_tablet-charge.gschema.override; do
+    install -Dm644 "$upstream/shared-charge/$relative" "$pkgdir/$relative"
+  done
+  install -Dm755 "$tree/usr/libexec/erhai-pen-connect" "$pkgdir/usr/libexec/erhai-pen-connect"
+  install -Dm755 "$tree/usr/libexec/erhai-focus-camera" "$pkgdir/usr/libexec/erhai-focus-camera"
+  install -Dm644 "$upstream/firmware/wireless_pen/24926/cps8601_firmware.bin" "$pkgdir/usr/lib/firmware/wireless_pen/24926/cps8601_firmware.bin"
   install -Dm755 "$tree/usr/libexec/erhai/gunyahvm-favorite" "$pkgdir/usr/libexec/erhai/gunyahvm-favorite"
   install -Dm755 "$tree/usr/sbin/erhai-cover" "$pkgdir/usr/bin/erhai-cover"
   install -Dm644 erhai-cover.service "$pkgdir/usr/lib/systemd/system/erhai-cover.service"

@@ -20,7 +20,7 @@ RAM 临时启动不替换启动分区，但使用已安装根系统的临时内�
 匹配的启动镜像、根系统与校验和，并确认会话超时后的恢复方式。不要混用不同构建的产物。
 
 开发会话须绑定目标设备、有明确超时，并具备用户态恢复；panic/用户态定时器不能
-保证从所有硬锁死中恢复。免认证 USB 调试通道只用于可信直连。
+保证从所有硬锁死中恢复。USB 开发通道使用主机公钥认证。
 
 ## 已有安装返回 Android
 
@@ -29,8 +29,7 @@ RAM 临时启动不替换启动分区，但使用已安装根系统的临时内�
 - Ubuntu 桌面打开 **Switch to Android（切换到 Android）**，按提示输入管理员密码，等待自动重启。
 - Android 侧使用已安装的 KernelSU 切换模块；其安装和路径约定见
   [切换器说明](../switch/README.md)。
-- 已装 Linux 中接 USB PD 充电器可以净充电（电脑 USB 口供电不足，仍会净放电）；Fastboot 下不能充电，
-  电量不足时返回 Android 充电，确认电量恢复后再继续。
+- 已装 Linux 中接 USB PD 充电器可以净充电（电脑 USB 口供电不足，仍会净放电）；Fastboot 下不充电。
 
 两个方向的切换在既有测试布局上已有验证。切换会改写三个启动分区，不能用于尚未
 安装、缺失回退镜像或布局不一致的设备。
@@ -48,7 +47,6 @@ RAM 临时启动不替换启动分区，但使用已安装根系统的临时内�
 |---|---|
 | `ubuntu-pad2pro-版本-rootfs.squashfs.part*` 与 `…-rootfs.manifest.json` | 用于安装的根文件系统，不含 USB 调试通道；首次准备分区时也用它运行临时内存桌面 |
 | `ubuntu-pad2pro-版本-setup-boot.img` 与 `…-setup-boot.manifest.json` | 该临时内存桌面的启动镜像，从主机加载上述根文件系统，只为这次会话加入 USB 调试通道 |
-| `erhai-device-packages-版本.tar` | 升级与整版回退用的新旧软件包仓库；含设备包、共享图形与桌面组件，不含 USB 调试通道 |
 | `erhai-switch-版本.zip` | Android 侧切换模块 |
 | `SHA256SUMS` | 所有附件及拼接后镜像的校验值 |
 
@@ -63,7 +61,7 @@ sha256sum --check --ignore-missing SHA256SUMS
 之后用它替代下文的构建产物：在本仓库检出中，把拼接后的镜像存为 `out/desktop-root/rootfs.squashfs`，
 清单存为 `out/desktop-root/manifest.json`。首次准备分区时由文件服务器把它提供给平板，并用
 `ubuntu-pad2pro-版本-setup-boot.img` 代替 `out/ram-desktop/boot-mainline.img`；安装时把同一文件传给
-`--rootfs`。升级时，解开 `erhai-device-packages-版本.tar`，按[升级已有安装](#升级已有安装)安装其中的包。
+`--rootfs`。升级见 [UPGRADE](UPGRADE.md)。
 
 ## 首次准备 Linux 分区
 
@@ -108,19 +106,21 @@ for part in boot init_boot vendor_boot; do
   adb -s "$device_serial" exec-out su -c "cat /dev/block/by-name/${part}_a" > "$device_backup/$part.img"
 done
 adb -s "$device_serial" reboot bootloader
-fastboot -s "$device_serial" boot out/ram-desktop/boot-mainline.img
+ssh-keygen -t ed25519 -f "$device_backup/setup-ssh" -N ''
+python3 tools/authorize-setup-ssh.py out/ram-desktop/boot-mainline.img "$device_backup/setup-ssh.pub" "$device_backup/setup-boot.img"
+fastboot -s "$device_serial" boot "$device_backup/setup-boot.img"
 ```
 
 电脑识别出 USB 网络后，用 `ip -br link` 查到新增接口名。将下方 `USB_INTERFACE` 换成
 该接口名；文件服务器终端继续保持运行。若电脑已通过 USB DHCP 获得 `192.168.77.10`，
-可跳过地址设置。调试网络只连接自己的电脑；主机需要 `curl` 和 Telnet 客户端。
+可跳过地址设置。调试网络只连接自己的电脑；主机需要 OpenSSH 客户端。
 
 ```sh
 sudo ip link set USB_INTERFACE up
 sudo ip address replace 192.168.77.10/24 dev USB_INTERFACE
 ```
 
-等待 RAM 桌面出现，再从电脑连接 `telnet 192.168.77.2 2323`。以下命令在平板的
+等待 RAM 桌面出现，再从电脑连接 `ssh -o HostKeyAlias=erhai-setup -o UserKnownHostsFile="$device_backup/setup-known-hosts" -i "$device_backup/setup-ssh" root@192.168.77.2`。以下命令在平板的
 root shell 中执行，只查看方案并保存分区表（下载成功后才执行）：
 
 ```sh
@@ -132,8 +132,8 @@ python3 /run/prepare-dualboot.py
 
 ```sh
 set -e
-curl --fail http://192.168.77.2:8081/run/erhai-gpt-backup.bin -o "$device_backup/gpt.bin"
-curl --fail http://192.168.77.2:8081/run/erhai-gpt-backup.json -o "$device_backup/gpt.json"
+ssh -o HostKeyAlias=erhai-setup -o UserKnownHostsFile="$device_backup/setup-known-hosts" -i "$device_backup/setup-ssh" root@192.168.77.2 cat /run/erhai-gpt-backup.bin > "$device_backup/gpt.bin"
+ssh -o HostKeyAlias=erhai-setup -o UserKnownHostsFile="$device_backup/setup-known-hosts" -i "$device_backup/setup-ssh" root@192.168.77.2 cat /run/erhai-gpt-backup.json > "$device_backup/gpt.json"
 ```
 
 确认备份已在电脑上、接受 Android 数据全部丢失后，在同一个平板 root shell 中应用：
@@ -170,7 +170,7 @@ adb -s "$device_serial" push out/erhai-switch-*.zip /sdcard/Download/
 它保留 Android 数据和 GPT；清空两个 Linux 分区，并通过既有切换器安装
 Ubuntu 启动三件套。尚未划分 Linux 分区的原厂设备不适用这一流程。
 
-主机需要 amd64 Linux、rootful Docker、Android platform-tools、ARM64 binfmt、原生 C 编译器及 `dpkg-deb`。平板从 Android 开始，电量至少 50%，USB 调试与 KernelSU
+主机需要 amd64 Linux、rootful Docker、Android platform-tools、ARM64 binfmt、原生 C 编译器及 `dpkg-deb`。平板从 Android 开始，USB 调试与 KernelSU
 root 可用，且已安装本项目的切换模块。固件须在[已验证组合](../packaging/installation.json)中；
 同型号的其它 OTA 不会自动获准刷入。准备构建指南生成的 `rootfs.squashfs` 及同目录
 `manifest.json`，备份目录应有足够空间存放系统安装镜像。安装器自动从固定输入构建
@@ -207,40 +207,14 @@ python3 tools/install.py --serial "$device_serial" --work "$install_work" --phas
 
 ## 日常使用与 USB 调试
 
-首次准备时使用的免认证 USB root shell 和文件服务只存在于 setup 启动镜像的 RAM 会话中；
-根文件系统以及由它安装的系统都不含调试通道。需要在可信电脑上继续开发时，可按
-[构建指南](BUILD.md#设备包与图形组件)用 `--debug` 构建设备包，以此装配根文件系统后再安装：
-其内核包在启动镜像中加入 `erhai.debug=1`，并依赖 `erhai-debug`。
+个性化的 RAM 准备镜像只为本次启动授权主机公钥。已安装的开发系统须在升级或重启前通过本机或现有可信会话，把自己的主机公钥存入 `/root/.ssh/erhai/authorized_keys`（root 所有，目录权限 0700，文件 0600）。安装可选的 `erhai-debug` 包并启用开发启动配置后，通过 SSH 登录 `root@192.168.77.2`，文件也通过 SSH 传输。
 
-在这样的安装上换装普通设备包（不带 `--debug` 构建到新的空输出目录，或取自 Release 的
-`erhai-device-packages-版本.tar`，安装方法见[升级已有安装](#升级已有安装)）即替换调试启动镜像，
-重启后不再启用 USB shell、HTTP 和调试 DHCP。只停止桌面上的调试服务不能关闭调试镜像在启动早期提供的通道。
+在这样的安装上换装普通设备包即替换调试启动镜像，
+重启后不再启用 USB SSH 和调试 DHCP。只停止桌面上的调试服务不能关闭调试镜像在启动早期提供的通道。
 
 ## 升级已有安装
 
-新版本用 APT 直接装在已有安装之上，不重新分区、不重装 Ubuntu，也不碰 Android。
-按[构建指南](BUILD.md#设备包与图形组件)用 `tools/build-debs.py` 和 `tools/build-sensors.py`
-分别把新版本的设备包和传感器包构建到新的空输出目录，
-`--debug` 的选择与已装的包保持一致。把两个目录传到平板，在平板终端执行：
-
-```sh
-sudo apt install ./device-packages/*.deb ./sensor-debs/*.deb && sudo reboot
-```
-
-发布附件 `erhai-device-packages-版本.tar` 包含 `repositories/` 下的新旧完整批次。
-校验并解压后，按[升级指南](UPGRADE.md)对应小节运行整版升级工具，不要把所有仓库中的 deb 混在一次通配符安装里。
-工具在修改包之前保留旧软件包与启动镜像组，以供整版回退。
-
-安装时内核包会把新的启动镜像写入活动槽，旧内核包仍保留；安装时导入的传感器注册表保持不变。
-新内核起不来时，按下文的恢复步骤处理。
-
-`erhai-firefox` 包把 Firefox 从 Ubuntu 的 Snap 换成 Mozilla 官方 deb。升级后执行
-`sudo apt update && sudo apt install firefox`，并确认替换 Ubuntu 的过渡包 `firefox`；
-该过渡包带版本 epoch，APT 会把替换显示为降级。Snap 版把每个用户的配置放在
-`~/snap/firefox/common/.mozilla/firefox`；需要保留时，在首次启动新 Firefox 前执行
-`mkdir -p ~/.mozilla && cp -a ~/snap/firefox/common/.mozilla/firefox ~/.mozilla/`，
-再用 `sudo snap remove firefox` 移除 Snap。只有在没有任何用户存在 `~/snap/firefox`
-目录时，开机才会自动移除该 Snap。
+见 [APT 升级说明](UPGRADE.md)。
 
 ## 异常与完整恢复
 

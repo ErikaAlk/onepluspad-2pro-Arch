@@ -79,20 +79,17 @@ target apt-get "${apt_options[@]}" --no-install-recommends --assume-yes \
 # Share the exact package selector and assertion with installed-system upgrades.
 cp /work/remove-generic-kernels "$root/.erhai-build/remove-generic-kernels"
 target sh /.erhai-build/remove-generic-kernels --image
-if [ -d /work/release-repository ]; then
-    batch=$(cat /work/release-repository-id)
-    mkdir -p "$root/var/lib/erhai/releases/$batch"
-    cp -a /work/release-repository/. "$root/var/lib/erhai/releases/$batch/"
-    printf 'deb [trusted=yes] file:/var/lib/erhai/releases/%s ./\n' "$batch" > "$root/etc/apt/sources.list.d/erhai-release.list"
-    target apt-get -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/erhai-release.list \
-        -o Dir::Etc::sourceparts=/.erhai-build/sourceparts \
-        -o APT::Get::List-Cleanup=0 update
-fi
+target sh -c 'for image in $(dpkg-query -W -f="\${binary:Package}\n" "erhai-kernel-image-*" 2>/dev/null); do apt-mark auto "$image"; done'
+target apt-get "${apt_options[@]}" --yes autoremove --purge
 cleanup_policy
 rm -rf "$build"
 # The ISO lists its own medium as a package source. An installed system has no
 # /cdrom, so apt update would fail on it; the Ubuntu archive sources stay.
 rm -f "$root/etc/apt/sources.list.d/cdrom.sources"
+# Package scripts expanded the kernel retention rule (tmpfiles.d erhai-kernel-retention.conf)
+# with this build machine's kernel release; systemd-tmpfiles-setup writes it at the first boot
+# from the kernel that actually runs.
+rm -f "$root/etc/apt/apt.conf.d/90-erhai-kernel-retention"
 
 target dpkg --audit > /work/audit.txt
 test ! -s /work/audit.txt
