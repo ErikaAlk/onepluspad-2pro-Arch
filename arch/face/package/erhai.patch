@@ -1,0 +1,362 @@
+diff --git a/upstream/howdy/src/cli/add.py b/adapted/howdy/src/cli/add.py
+index 9a2c9a0..f670913 100644
+--- a/upstream/howdy/src/cli/add.py
++++ b/adapted/howdy/src/cli/add.py
+@@ -7,12 +7,15 @@ import sys
+ import json
+ import configparser
+ import builtins
++import tempfile
+ import numpy as np
+ import paths_factory
+ 
+ from recorders.video_capture import VideoCapture
+ from i18n import _
+ 
++os.umask(0o077)
++
+ # Try to import dlib and give a nice error if we can't
+ # Add should be the first point where import issues show up
+ try:
+@@ -56,7 +59,8 @@ encodings = []
+ # Make the ./models folder if it doesn't already exist
+ if not os.path.exists(paths_factory.user_models_dir_path()):
+ 	print(_("No face model folder found, creating one"))
+-	os.makedirs(paths_factory.user_models_dir_path())
++	os.makedirs(paths_factory.user_models_dir_path(), mode=0o700)
++os.chmod(paths_factory.user_models_dir_path(), 0o700)
+ 
+ # To try read a premade encodings file if it exists
+ try:
+@@ -197,8 +201,9 @@ if use_cnn:
+ 	face_location = face_location.rect
+ 
+ # Get the encodings in the frame
+-face_landmark = pose_predictor(frame, face_location)
+-face_encoding = np.array(face_encoder.compute_face_descriptor(frame, face_landmark, 1))
++rgbframe = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
++face_landmark = pose_predictor(rgbframe, face_location)
++face_encoding = np.array(face_encoder.compute_face_descriptor(rgbframe, face_landmark, 1))
+ 
+ insert_model["data"].append(face_encoding.tolist())
+ 
+@@ -206,8 +211,12 @@ insert_model["data"].append(face_encoding.tolist())
+ encodings.append(insert_model)
+ 
+ # Save the new encodings to disk
+-with open(enc_file, "w") as datafile:
++with tempfile.NamedTemporaryFile(mode="w", dir=paths_factory.user_models_dir_path(),
++                                 prefix=".face-", delete=False, encoding="utf-8") as datafile:
+ 	json.dump(encodings, datafile)
++	datafile.flush()
++	os.fsync(datafile.fileno())
++os.replace(datafile.name, enc_file)
+ 
+ # Give let the user know how it went
+ print(_("""\nScan complete
+diff --git a/upstream/howdy/src/compare.py b/adapted/howdy/src/compare.py
+index 35e85fb..583349b 100644
+--- a/upstream/howdy/src/compare.py
++++ b/adapted/howdy/src/compare.py
+@@ -10,6 +10,9 @@ timings = {
+ }
+ 
+ # Import required modules
++from process_lifecycle import bind_to_parent
++
++bind_to_parent()
+ import sys
+ import os
+ import json
+@@ -153,11 +156,9 @@ rotate = config.getint("video", "rotate", fallback=0)
+ gtk_pipe = sys.stdout if gtk_stdout else subprocess.DEVNULL
+ 
+ # Start the auth ui, register it to be always be closed on exit
+-try:
++if config.getboolean("core", "auth_ui", fallback=True):
+ 	gtk_proc = subprocess.Popen(["howdy-gtk", "--start-auth-ui"], stdin=subprocess.PIPE, stdout=gtk_pipe, stderr=gtk_pipe)
+ 	atexit.register(exit)
+-except FileNotFoundError:
+-	pass
+ 
+ # Write to the stdin to redraw ui
+ send_to_ui("M", _("Starting up..."))
+@@ -297,6 +298,14 @@ while True:
+ 			frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+ 			gsframe = cv2.rotate(gsframe, cv2.ROTATE_90_CLOCKWISE)
+ 
++	if rotate == 3:
++		rotation_codes = (None, cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_180,
++		                  cv2.ROTATE_90_COUNTERCLOCKWISE)
++		rotation_code = rotation_codes[(frames - 1) % 4]
++		if rotation_code is not None:
++			frame = cv2.rotate(frame, rotation_code)
++			gsframe = cv2.rotate(gsframe, rotation_code)
++
+ 	# Get all faces from that frame as encodings
+ 	# Upsamples 1 time
+ 	face_locations = face_detector(gsframe, 1)
+@@ -306,8 +315,9 @@ while True:
+ 			fl = fl.rect
+ 
+ 		# Fetch the faces in the image
+-		face_landmark = pose_predictor(frame, fl)
+-		face_encoding = np.array(face_encoder.compute_face_descriptor(frame, face_landmark, 1))
++		rgbframe = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
++		face_landmark = pose_predictor(rgbframe, fl)
++		face_encoding = np.array(face_encoder.compute_face_descriptor(rgbframe, face_landmark, 1))
+ 
+ 		# Match this found face against a known face
+ 		matches = np.linalg.norm(encodings - face_encoding, axis=1)
+diff --git a/upstream/howdy/src/meson.build b/adapted/howdy/src/meson.build
+index 36dc05e..9be0ce5 100644
+--- a/upstream/howdy/src/meson.build
++++ b/adapted/howdy/src/meson.build
+@@ -31,6 +31,7 @@ py_sources = [
+     'compare.py',
+     'i18n.py',
+     'paths_factory.py',
++    'process_lifecycle.py',
+     'recorders/__init__.py',
+     'recorders/ffmpeg_reader.py',
+     'recorders/pyv4l2_reader.py',
+diff --git a/upstream/howdy/src/pam/main.cc b/adapted/howdy/src/pam/main.cc
+index d3af59d..abfdb1e 100644
+--- a/upstream/howdy/src/pam/main.cc
++++ b/adapted/howdy/src/pam/main.cc
+@@ -8,6 +8,9 @@
+ #include <spawn.h>
+ #include <stdexcept>
+ #include <sys/signalfd.h>
++extern "C" {
++#include <sys/pidfd.h>
++}
+ #include <sys/stat.h>
+ #include <sys/syslog.h>
+ #include <sys/types.h>
+@@ -40,6 +43,14 @@ const auto DEFAULT_TIMEOUT =
+     std::chrono::duration<int, std::chrono::milliseconds::period>(100);
+ const auto MAX_RETRIES = 5;
+ 
++struct ChildPidfd {
++  int fd;
++  ~ChildPidfd() {
++    if (fd >= 0)
++      close(fd);
++  }
++};
++
+ #define S(msg) gettext(msg)
+ 
+ /**
+@@ -51,6 +62,10 @@ const auto MAX_RETRIES = 5;
+ auto howdy_error(int status,
+                  const std::function<int(int, const char *)> &conv_function)
+     -> int {
++  if (status < 0) {
++    syslog(LOG_ERR, "Failed to collect face authentication process status");
++    return PAM_AUTH_ERR;
++  }
+   // If the process has exited
+   if (WIFEXITED(status)) {
+     // Get the status code returned
+@@ -77,7 +92,7 @@ auto howdy_error(int status,
+       break;
+     default:
+       conv_function(PAM_ERROR_MSG,
+-                    std::string(S("Unknown error: ") + status).c_str());
++                    (std::string(S("Unknown error: ")) + std::to_string(status)).c_str());
+       syslog(LOG_ERR, "Failure, unknown error %d", status);
+     }
+   } else if (WIFSIGNALED(status)) {
+@@ -206,6 +221,15 @@ auto identify(pam_handle_t *pamh, int flags, int argc, const char **argv,
+            config.ParseError());
+     return PAM_SYSTEM_ERR;
+   }
++  const long recognition_timeout = config.GetInteger("video", "timeout", 4);
++  const long startup_timeout = config.GetInteger("video", "startup_timeout", 6);
++  if (recognition_timeout < 1 || recognition_timeout > 30 ||
++      startup_timeout < 1 || startup_timeout > 30) {
++    syslog(LOG_ERR, "Invalid face authentication timeout");
++    return PAM_SYSTEM_ERR;
++  }
++  const auto deadline = std::chrono::steady_clock::now() +
++      std::chrono::seconds(recognition_timeout + startup_timeout);
+ 
+   // Will contain the responses from PAM functions
+   int pam_res = PAM_IGNORE;
+@@ -264,13 +288,26 @@ auto identify(pam_handle_t *pamh, int flags, int argc, const char **argv,
+ 
+   const char *const args[] = {PYTHON_EXECUTABLE_PATH, // NOLINT
+                               COMPARE_PROCESS_PATH, username, nullptr};
+-  pid_t child_pid;
++  int child_pidfd = -1;
+ 
+   // Start the python subprocess
+-  if (posix_spawnp(&child_pid, PYTHON_EXECUTABLE_PATH, nullptr, nullptr,
+-                   const_cast<char *const *>(args), nullptr) != 0) {
+-    syslog(LOG_ERR, "Can't spawn the howdy process: %s (%d)", strerror(errno),
+-           errno);
++  const int spawn_error = pidfd_spawnp(&child_pidfd, PYTHON_EXECUTABLE_PATH, nullptr, nullptr,
++                   const_cast<char *const *>(args), nullptr);
++  if (spawn_error != 0) {
++    syslog(LOG_ERR, "Can't spawn the howdy process: %s (%d)", strerror(spawn_error),
++           spawn_error);
++    return PAM_SYSTEM_ERR;
++  }
++  const ChildPidfd child_handle{child_pidfd};
++  const pid_t child_pid = pidfd_getpid(child_handle.fd);
++  if (child_pid < 0) {
++    syslog(LOG_ERR, "Can't read face authentication process identity: %s", strerror(errno));
++    pidfd_send_signal(child_handle.fd, SIGKILL, nullptr, 0);
++    siginfo_t child_info{};
++    int wait_result;
++    do {
++      wait_result = waitid(P_PIDFD, child_handle.fd, &child_info, WEXITED);
++    } while (wait_result < 0 && errno == EINTR);
+     return PAM_SYSTEM_ERR;
+   }
+ 
+@@ -283,8 +320,15 @@ auto identify(pam_handle_t *pamh, int flags, int argc, const char **argv,
+   // This task wait for the status of the python subprocess (we don't want a
+   // zombie process)
+   optional_task<int> child_task([&] {
+-    int status;
+-    waitpid(child_pid, &status, 0);
++    int status = -1;
++    pid_t waited_pid;
++    do {
++      waited_pid = waitpid(child_pid, &status, 0);
++    } while (waited_pid < 0 && errno == EINTR);
++    if (waited_pid != child_pid) {
++      syslog(LOG_ERR, "Failed to wait for face authentication process: %s", strerror(errno));
++      status = -1;
++    }
+     {
+       std::unique_lock<std::mutex> lock(mutx);
+       if (confirmation_type == ConfirmationType::Unset) {
+@@ -322,16 +366,25 @@ auto identify(pam_handle_t *pamh, int flags, int argc, const char **argv,
+   }
+ 
+   // Wait for the end either of the child or the password input
++  bool completed;
+   {
+     std::unique_lock<std::mutex> lock(mutx);
+-    convar.wait(lock,
++    completed = convar.wait_until(lock, deadline,
+                 [&] { return confirmation_type != ConfirmationType::Unset; });
+   }
++  if (!completed) {
++    syslog(LOG_ERR, "Face authentication exceeded total timeout");
++    pidfd_send_signal(child_handle.fd, SIGKILL, nullptr, 0);
++    child_task.stop(false);
++    if (ask_pass)
++      pass_task.stop(true);
++    return PAM_AUTH_ERR;
++  }
+ 
+   // The password has been entered or an error has occurred
+   if (confirmation_type == ConfirmationType::Pam) {
+     // We kill the child because we don't need its result
+-    kill(child_pid, SIGTERM);
++    pidfd_send_signal(child_handle.fd, SIGTERM, nullptr, 0);
+     child_task.stop(false);
+ 
+     // We just wait for the thread to stop since it's this one which sent us the
+@@ -452,5 +505,5 @@ PAM_EXTERN auto pam_sm_chauthtok(pam_handle_t *pamh, int flags, int argc,
+ }
+ PAM_EXTERN auto pam_sm_setcred(pam_handle_t *pamh, int flags, int argc,
+                                const char **argv) -> int {
+-  return PAM_IGNORE;
++  return PAM_SUCCESS;
+ }
+diff --git a/adapted/howdy/src/process_lifecycle.py b/adapted/howdy/src/process_lifecycle.py
+new file mode 100644
+index 0000000..769c873
+--- /dev/null
++++ b/adapted/howdy/src/process_lifecycle.py
+@@ -0,0 +1,17 @@
++import ctypes
++import os
++import signal
++
++
++def bind_to_parent():
++    parent_pid = os.getppid()
++    if parent_pid == 1:
++        raise RuntimeError("认证会话已经结束")
++    libc = ctypes.CDLL(None, use_errno=True)
++    libc.prctl.argtypes = [ctypes.c_int, ctypes.c_ulong, ctypes.c_ulong,
++                           ctypes.c_ulong, ctypes.c_ulong]
++    libc.prctl.restype = ctypes.c_int
++    if libc.prctl(1, signal.SIGKILL, 0, 0, 0) != 0:
++        raise OSError(ctypes.get_errno(), "无法关联认证进程生命周期")
++    if os.getppid() != parent_pid:
++        raise RuntimeError("认证会话已经结束")
+diff --git a/upstream/howdy/src/recorders/video_capture.py b/adapted/howdy/src/recorders/video_capture.py
+index 15888a5..23075c0 100644
+--- a/upstream/howdy/src/recorders/video_capture.py
++++ b/adapted/howdy/src/recorders/video_capture.py
+@@ -32,7 +32,7 @@ class VideoCapture:
+ 			self.config = config
+ 
+ 		# Check device path
+-		if not os.path.exists(self.config.get("video", "device_path")):
++		if self.config.get("video", "recording_plugin") != "gstreamer" and not os.path.exists(self.config.get("video", "device_path")):
+ 			if self.config.getboolean("video", "warn_no_device", fallback=True):
+ 				print(_("Howdy could not find a camera device at the path specified in the config file."))
+ 				print(_("It is very likely that the path is not configured correctly, please edit the 'device_path' config value by running:"))
+@@ -46,7 +46,12 @@ class VideoCapture:
+ 		self.fw = None
+ 		# The frame height
+ 		self.fh = None
++		self.rotation = self.config.getint("video", "rotation_quarter_turns", fallback=0)
++		if self.rotation not in range(4):
++			raise ValueError("摄像头旋转必须为 0、1、2 或 3")
+ 		self._create_reader()
++		if self.config.get("video", "recording_plugin") == "gstreamer" and not self.internal.isOpened():
++			raise RuntimeError("无法打开面容认证摄像头")
+ 
+ 		# Request a frame to wake the camera up
+ 		self.internal.grab()
+@@ -84,6 +89,10 @@ class VideoCapture:
+ 		if not ret:
+ 			print(_("Failed to read camera specified in the 'device_path' config option, aborting"))
+ 			sys.exit(14)
++		if self.rotation:
++			rotation_codes = {1: cv2.ROTATE_90_CLOCKWISE, 2: cv2.ROTATE_180,
++			                  3: cv2.ROTATE_90_COUNTERCLOCKWISE}
++			frame = cv2.rotate(frame, rotation_codes[self.rotation])
+ 
+ 		try:
+ 			# Convert from color to grayscale
+@@ -102,7 +111,15 @@ class VideoCapture:
+ 		"""
+ 		recording_plugin = self.config.get("video", "recording_plugin", fallback="opencv")
+ 
+-		if recording_plugin == "ffmpeg":
++		if recording_plugin == "gstreamer":
++			self.internal = cv2.VideoCapture(
++				self.config.get("video", "gstreamer_pipeline"),
++				cv2.CAP_GSTREAMER,
++				[cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 5000,
++				 cv2.CAP_PROP_READ_TIMEOUT_MSEC, 2000]
++			)
++
++		elif recording_plugin == "ffmpeg":
+ 			# Set the capture source for ffmpeg
+ 			from recorders.ffmpeg_reader import ffmpeg_reader
+ 			self.internal = ffmpeg_reader(
+diff --git a/upstream/howdy/src/rubberstamps/__init__.py b/adapted/howdy/src/rubberstamps/__init__.py
+index 57a115f..7fc4e2f 100644
+--- a/upstream/howdy/src/rubberstamps/__init__.py
++++ b/adapted/howdy/src/rubberstamps/__init__.py
+@@ -73,7 +73,7 @@ def execute(config, gtk_proc, opencv):
+ 			continue
+ 
+ 		# Parse the rule with regex
+-		regex_result = re.search("^(\w+)\s+([\w\.]+)\s+([a-z]+)(.*)?$", rule, re.IGNORECASE)
++		regex_result = re.search(r"^(\w+)\s+([\w\.]+)\s+([a-z]+)(.*)?$", rule, re.IGNORECASE)
+ 
+ 		# Error out if the regex did not match (invalid line)
+ 		if not regex_result:

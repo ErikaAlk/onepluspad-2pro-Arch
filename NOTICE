@@ -7,6 +7,13 @@ The GPL-2.0-only license in LICENSE covers original integration code unless a
 file states otherwise. It does not replace third-party licenses or grant rights
 to firmware. File-level notices and original authorship remain applicable.
 
+Howdy
+-----
+arch/face/package/erhai.patch adapts Howdy (MIT) from
+https://github.com/boltgolt/howdy/tree/d3ab99382f88f043d15f15c1450ab69433892a1c.
+The package installs the upstream license. The build retrieves the two
+public dlib models described at https://github.com/davisking/dlib-models.
+
 Linux kernel
 ------------
 The kernel is maintained separately. Its COPYING, LICENSES, file-level SPDX

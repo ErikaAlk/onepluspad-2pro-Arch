@@ -1,0 +1,8 @@
+#%PAM-1.0
+auth required pam_env.so
+auth [success=ok default=1] pam_erhai_face.so
+auth [success=done default=die] pam_faillock.so authsucc
+auth include system-auth
+account include system-auth
+password include system-auth
+session include system-auth

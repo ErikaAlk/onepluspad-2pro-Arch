@@ -1,0 +1,8 @@
+{
+  "uuid": "erhai-unlock@erhai.local",
+  "name": "面容解锁",
+  "description": "锁屏密码输入、系统面容认证与桌面过渡动画",
+  "shell-version": ["51"],
+  "session-modes": ["user", "unlock-dialog"],
+  "version": 5
+}

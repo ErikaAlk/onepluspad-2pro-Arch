@@ -1,0 +1,27 @@
+[Unit]
+Description=本地面容认证请求
+
+[Service]
+ExecStart=/usr/lib/erhai-face/broker
+StandardInput=socket
+StandardOutput=journal
+StandardError=journal
+User=root
+Group=root
+UMask=0077
+TimeoutStartSec=50
+RuntimeMaxSec=50
+KillMode=control-group
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/run/erhai-face /run/faillock
+PrivateNetwork=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictSUIDSGID=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+LimitCORE=0

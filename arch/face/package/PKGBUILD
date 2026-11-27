@@ -1,0 +1,51 @@
+pkgname=howdy-erhai
+pkgver=3.0.0beta.r1
+pkgrel=5
+pkgdesc='GNOME 面容认证，使用 SC820CS 摄像头'
+arch=(aarch64)
+url='https://github.com/boltgolt/howdy'
+license=(MIT)
+depends=(libinih libevdev pam python-opencv python-numpy python-pillow python-gobject)
+makedepends=(meson ninja clang gettext python)
+provides=(howdy)
+conflicts=(howdy howdy-git)
+backup=(etc/howdy/config.ini)
+source=('howdy-d3ab9938.tar.gz::https://codeload.github.com/boltgolt/howdy/tar.gz/d3ab99382f88f043d15f15c1450ab69433892a1c' howdy.ini
+        'https://dlib.net/files/dlib_face_recognition_resnet_model_v1.dat.bz2'
+        'https://dlib.net/files/shape_predictor_5_face_landmarks.dat.bz2'
+        erhai.patch)
+noextract=(dlib_face_recognition_resnet_model_v1.dat.bz2
+           shape_predictor_5_face_landmarks.dat.bz2)
+sha256sums=('e0b58928c6d1362ea8c630f056261bccb446fe84b507f7b7cceb7c5a55706061'
+            '41795193769073916a517c59b40ea4e041f785a18c5b6dc95087efd0ff70c90a'
+            'abb1f61041e434465855ce81c2bd546e830d28bcbed8d27ffbe5bb408b11553a'
+            '6e787bbebf5c9efdb793f6cd1f023230c4413306605f24f299f12869f95aa472'
+            'd54d1b48eef8836ffe3a1af79dfbf25a84fa713ecded947eb4e33d82e9e47930')
+
+prepare() {
+    cd howdy-d3ab99382f88f043d15f15c1450ab69433892a1c
+    patch -Np2 -i "$srcdir/erhai.patch"
+}
+
+build() {
+    export CC=clang CXX=clang++
+    arch-meson howdy-d3ab99382f88f043d15f15c1450ab69433892a1c build \
+        -Dpython_path=/opt/erhai-howdy/venv/bin/python \
+        -Dconfig_dir=/etc/howdy -Duser_models_dir=/var/lib/howdy/models \
+        -Ddlib_data_dir=/usr/share/dlib-data -Dwith_polkit=false
+    meson compile -C build -j 4
+}
+
+package() {
+    meson install -C build --destdir "$pkgdir"
+    install -Dm644 "$srcdir/howdy.ini" "$pkgdir/etc/howdy/config.ini"
+    install -d -m700 "$pkgdir/var/lib/howdy/models"
+    for model_name in dlib_face_recognition_resnet_model_v1 shape_predictor_5_face_landmarks; do
+        bzip2 -dc "$srcdir/$model_name.dat.bz2" > "$pkgdir/usr/share/dlib-data/$model_name.dat"
+        chmod 644 "$pkgdir/usr/share/dlib-data/$model_name.dat"
+    done
+    install -Dm644 howdy-d3ab99382f88f043d15f15c1450ab69433892a1c/LICENSE \
+        "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    test -f "$pkgdir/usr/lib/security/pam_howdy.so"
+    test -x "$pkgdir/usr/bin/howdy"
+}

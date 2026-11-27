@@ -1,0 +1,10 @@
+#%PAM-1.0
+auth requisite pam_nologin.so
+auth requisite pam_shells.so
+auth required pam_env.so
+auth [success=ok default=1] pam_erhai_face.so
+auth [success=done default=die] pam_faillock.so authsucc
+auth include system-local-login
+account include system-local-login
+session include system-local-login
+password include system-local-login

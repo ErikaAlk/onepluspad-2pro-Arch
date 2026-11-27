@@ -1,0 +1,13 @@
+.erhai-face-popup {
+    padding: 0;
+    border-radius: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background-color: #050506;
+    box-shadow: 0 9px 28px rgba(0, 0, 0, 0.28);
+}
+
+.erhai-face-confirm {
+    margin-top: 12px;
+    border-radius: 28px;
+    background-color: #101012;
+}
