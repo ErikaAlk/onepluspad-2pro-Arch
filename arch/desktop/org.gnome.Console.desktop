@@ -1,0 +1,20 @@
+[Desktop Entry]
+Name=终端
+Exec=env LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 LANGUAGE=en_US:en kgx
+TryExec=kgx
+Icon=org.gnome.Console
+Terminal=false
+Type=Application
+Categories=System;TerminalEmulator;GTK;GNOME;
+StartupNotify=true
+DBusActivatable=false
+X-GNOME-UsesNotifications=true
+Actions=new-window;new-tab;
+
+[Desktop Action new-window]
+Name=新建窗口
+Exec=env LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 LANGUAGE=en_US:en kgx
+
+[Desktop Action new-tab]
+Name=新建标签页
+Exec=env LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 LANGUAGE=en_US:en kgx --tab
