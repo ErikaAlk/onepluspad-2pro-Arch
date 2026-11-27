@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- 增加 Arch v0.12.2 的可选 Pencil 2 Pro 模块和安装工具，支持磁吸识别与压感书写。
+
 ## Arch v0.12.2
 
 - 同步上游充电、Wi-Fi、USB、电源模式和笔支持，升级 GunyahVM 和 GNOME 自动亮度适配。

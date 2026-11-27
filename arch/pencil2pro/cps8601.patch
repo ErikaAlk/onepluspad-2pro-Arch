@@ -1,0 +1,105 @@
+--- a/drivers/power/supply/cps8601.c
++++ b/drivers/power/supply/cps8601.c
+@@ -30,6 +30,10 @@
+ #include <linux/i2c.h>
+ #include <linux/regmap.h>
+ #include <linux/gpio/consumer.h>
++#include <linux/pinctrl/pinconf-generic.h>
++#include <linux/pinctrl/consumer.h>
++#include <linux/pinctrl/machine.h>
++#include <linux/platform_device.h>
+ #include <linux/interrupt.h>
+ #include <linux/workqueue.h>
+ #include <linux/suspend.h>
+@@ -287,6 +291,8 @@ static void cps8601_power_on(struct cps8601 *chip)
+ 	gpiod_set_value(chip->sleep_gpiod, 0);
+ 	gpiod_set_value(chip->sw_en_gpiod, 1);
+ 	msleep(2500);
++	gpiod_set_value(chip->sleep_gpiod, 1);
++	msleep(50);
+ }
+ 
+ static void cps8601_power_off(struct cps8601 *chip)
+@@ -307,9 +313,9 @@ static void cps8601_power_off(struct cps8601 *chip)
+ 
+ static void cps8601_scan(struct cps8601 *chip)
+ {
+-	gpiod_set_value(chip->scan_gpiod, 1);
+-	msleep(50);
+ 	gpiod_set_value(chip->scan_gpiod, 0);
++	msleep(50);
++	gpiod_set_value(chip->scan_gpiod, 1);
+ }
+ 
+ /*
+@@ -1024,10 +1030,13 @@ static void cps8601_ready_work(struct work_struct *work)
+ 	/* vendor terminal state keeps sw_en HIGH (it gates the MCU supply);
+ 	 * dropping it here killed the bus right after "ready" and made every
+ 	 * later register write NAK (2026-11-01 endgame). */
+-	gpiod_set_value(chip->scan_gpiod, 0);
+-	msleep(50);
+ 	gpiod_set_value(chip->scan_gpiod, 1);
+-	dev_info(chip->dev, "scan armed (vendor post-ready state)\n");
++	gpiod_set_value(chip->sleep_gpiod, 0);
++	gpiod_set_value(chip->sw_en_gpiod, 0);
++	msleep(50);
++	gpiod_set_value(chip->sw_en_gpiod, 1);
++	msleep(50);
++	dev_info(chip->dev, "scan armed after transmitter reset\n");
+ 
+ }
+ 
+@@ -1295,6 +1304,7 @@ static int cps8601_probe(struct i2c_client *client)
+ 	    IS_ERR(chip->sw_en_gpiod))
+ 		return dev_err_probe(dev, -EINVAL, "control gpio missing\n");
+ 
++
+ 	device_property_read_u32(dev, "oplus,ocp-threshold", &chip->ocp_uv);
+ 	device_property_read_u32(dev, "oplus,ovp-threshold", &chip->ovp_uv);
+ 	device_property_read_u32(dev, "oplus,lvp-threshold", &chip->lvp_uv);
+@@ -1377,7 +1387,44 @@ static struct i2c_driver cps8601_driver = {
+ 	.remove		= cps8601_remove,
+ 	.shutdown	= cps8601_shutdown,
+ };
+-module_i2c_driver(cps8601_driver);
++static unsigned long irq_cfg[] = { PIN_CONF_PACKED(PIN_CONFIG_BIAS_PULL_UP, 1) };
++static const struct pinctrl_map pad_irq[] = {
++	PIN_MAP_CONFIGS_GROUP_DEFAULT("erhai-pen-irq", "f100000.pinctrl", "gpio172", irq_cfg),
++};
++static struct platform_device *irq_pdev;
++
++static int __init cps8601_init(void)
++{
++	int ret = pinctrl_register_mappings(pad_irq, ARRAY_SIZE(pad_irq));
++
++	if (ret)
++		return ret;
++	irq_pdev = platform_device_register_simple("erhai-pen-irq", -1, NULL, 0);
++	if (IS_ERR(irq_pdev)) {
++		pinctrl_unregister_mappings(pad_irq);
++		return PTR_ERR(irq_pdev);
++	}
++	if (IS_ERR(devm_pinctrl_get_select_default(&irq_pdev->dev))) {
++		platform_device_unregister(irq_pdev);
++		pinctrl_unregister_mappings(pad_irq);
++		return -ENODEV;
++	}
++	ret = i2c_add_driver(&cps8601_driver);
++	if (ret) {
++		platform_device_unregister(irq_pdev);
++		pinctrl_unregister_mappings(pad_irq);
++	}
++	return ret;
++}
++module_init(cps8601_init);
++
++static void __exit cps8601_exit(void)
++{
++	i2c_del_driver(&cps8601_driver);
++	platform_device_unregister(irq_pdev);
++	pinctrl_unregister_mappings(pad_irq);
++}
++module_exit(cps8601_exit);
+ 
+ MODULE_AUTHOR("erhai mainline port");
+ MODULE_DESCRIPTION("CPS8601 wireless pen charger driver");

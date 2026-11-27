@@ -8,6 +8,10 @@
 
 Arch 已同步上游 v0.12.2，采用上游充电驱动、处理器电源策略和自动亮度曲线。真机已从内部存储启动，GNOME Wayland、前后摄采集、宿主和 Waydroid 的 Adreno 830v1 实际渲染通过。验证范围见 [v0.12.2 更新说明](docs/ARCH-UPSTREAM-v0.12.2.zh-CN.md)。
 
+## 手写笔
+
+Pencil 2 Pro 在 OPD2413 的 Arch v0.12.2 上已验证磁吸识别、蓝牙连接、书写和压感。使用这支笔时，请安装[手写笔适配模块](arch/pencil2pro/README.md)。
+
 ## 构建
 
 在 Linux 文件系统中工作，准备 Git、Python、base-devel、AArch64 交叉编译器、ccache 与 QEMU AArch64。固定来源见 [`arch/source.json`](arch/source.json)，构建方式见 [Arch 说明](docs/ARCH.zh-CN.md)。

@@ -1,0 +1,1 @@
+SUBSYSTEM=="spi", KERNEL=="spi0.0", ATTR{modalias}=="spi:nt36536-ts", TAG+="systemd", ENV{SYSTEMD_ALIAS}="/sys/subsystem/spi/devices/spi0.0"
