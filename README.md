@@ -16,6 +16,8 @@ Pencil 2 Pro 在 OPD2413 的 Arch v0.12.2 上已验证磁吸识别、蓝牙连�
 
 ## 构建
 
+可选的 [1Password 系统认证与后台启动](arch/1password/README.md)适用于官方 ARM64 桌面应用。
+
 在 Linux 文件系统中工作，准备 Git、Python、base-devel、AArch64 交叉编译器、ccache 与 QEMU AArch64。固定来源见 [`arch/source.json`](arch/source.json)，构建方式见 [Arch 说明](docs/ARCH.zh-CN.md)。
 
 完整根系统装配与面向其他设备的全新安装流程仍须独立验收。
