@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=org.erhai.InputFocus1
+Exec=/usr/bin/python /usr/local/share/erhai/input-focus-service.py
+SystemdService=erhai-input-focus.service
