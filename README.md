@@ -63,6 +63,7 @@ gjs -m arch/appearance/configure.js disable
 
 ## 文档与来源
 
+- [中文桌面、英文终端、内置分区、应用窗口与微信输入法](arch/desktop/README.md)
 - [Arch 源码、构建与本机验证](docs/ARCH.zh-CN.md)
 - [上游 v0.9.1 适配](docs/ARCH-UPSTREAM-v0.9.1.zh-CN.md)
 - [可选外观](docs/APPEARANCE.zh-CN.md)

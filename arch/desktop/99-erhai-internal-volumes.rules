@@ -1,0 +1,2 @@
+# 仅隐藏内置 UFS 中的辅助分区，保留 Linux 主分区和外接存储。
+SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", KERNELS=="1d84000.ufs", ENV{ID_PART_ENTRY_NAME}!="linux_rootfs", ENV{UDISKS_IGNORE}="1"
