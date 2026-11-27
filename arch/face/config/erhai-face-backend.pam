@@ -1,0 +1,3 @@
+#%PAM-1.0
+auth requisite pam_faillock.so preauth silent
+auth [success=ok default=die] pam_howdy.so

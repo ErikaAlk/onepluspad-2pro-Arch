@@ -1,0 +1,12 @@
+[Unit]
+Description=本地面容认证通道
+
+[Socket]
+ListenSequentialPacket=/run/erhai-face/auth.sock
+SocketMode=0600
+DirectoryMode=0700
+Accept=yes
+MaxConnections=4
+
+[Install]
+WantedBy=sockets.target
