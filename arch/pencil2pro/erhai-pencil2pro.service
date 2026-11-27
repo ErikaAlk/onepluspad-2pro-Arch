@@ -1,0 +1,13 @@
+[Unit]
+Description=启用一加 Pencil 2 Pro 笔尖与压感
+Requires=sys-subsystem-spi-devices-spi0.0.device
+After=sys-subsystem-spi-devices-spi0.0.device
+ConditionPathExists=/usr/lib/modules/%v/updates/nt36536_pen.ko
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/erhai-pencil2pro
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

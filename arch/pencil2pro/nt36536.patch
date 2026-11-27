@@ -1,0 +1,57 @@
+--- a/drivers/input/touchscreen/nt36536/nt36536.c
++++ b/drivers/input/touchscreen/nt36536/nt36536.c
+@@ -1293,11 +1293,14 @@ static int nvt_ext_cmd(u8 sub_cmd)
+  * Downloaded firmware starts with scanning off. Restore the requested
+  * setting after every firmware download. Called with ts->lock held.
+  */
++static unsigned int pen_protocol;
++static const u8 nvt_pen_commands[] = { NVT_EXT_PEN_SCAN_ON, 0x12, 0x13, 0x15, 0x18 };
++
+ static int nvt_set_pen_scan(bool enable)
+ {
+ 	int ret;
+ 
+-	ret = nvt_ext_cmd(enable ? NVT_EXT_PEN_SCAN_ON : NVT_EXT_PEN_SCAN_OFF);
++	ret = nvt_ext_cmd(enable ? nvt_pen_commands[pen_protocol] : NVT_EXT_PEN_SCAN_OFF);
+ 	if (ret)
+ 		NVT_ERR("failed to turn pen scan %s: %d\n",
+ 			enable ? "on" : "off", ret);
+@@ -1345,8 +1348,29 @@ static ssize_t pen_scan_store(struct device *dev,
+ }
+ static DEVICE_ATTR_RW(pen_scan);
+ 
++static ssize_t pen_protocol_store(struct device *dev, struct device_attribute *attr,
++				  const char *buf, size_t count)
++{
++	struct nvt_ts_data *core = dev_get_drvdata(dev);
++	unsigned int protocol;
++	int ret = kstrtouint(buf, 10, &protocol);
++
++	if (ret || protocol >= ARRAY_SIZE(nvt_pen_commands))
++		return -EINVAL;
++	guard(mutex)(&core->lock);
++	if (core->touch_awake && core->pen_scan) {
++		ret = nvt_ext_cmd(nvt_pen_commands[protocol]);
++		if (ret)
++			return ret;
++	}
++	pen_protocol = protocol;
++	return count;
++}
++static DEVICE_ATTR_WO(pen_protocol);
++
+ static struct attribute *nvt_ts_attrs[] = {
+ 	&dev_attr_pen_scan.attr,
++	&dev_attr_pen_protocol.attr,
+ 	NULL
+ };
+ 
+@@ -2254,7 +2278,7 @@ static struct spi_driver nvt_spi_driver = {
+ 	.shutdown	= nvt_ts_shutdown,
+ 	.id_table	= nvt_ts_id,
+ 	.driver = {
+-		.name	= NVT_SPI_NAME,
++		.name	= "nt36536-pen",
+ 		.owner	= THIS_MODULE,
+ #ifdef CONFIG_PM
+ 		.pm = &nvt_dev_pm_ops,
