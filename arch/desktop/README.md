@@ -7,6 +7,7 @@
 在 `/etc/locale.gen` 中启用 `zh_CN.UTF-8 UTF-8` 和 `en_US.UTF-8 UTF-8`，然后执行：
 
 ```sh
+sudo pacman -S --needed gnome-console
 sudo locale-gen
 sudo localectl set-locale LANG=zh_CN.UTF-8
 sudo install -Dm644 arch/desktop/org.gnome.Console.desktop /usr/local/share/applications/org.gnome.Console.desktop
